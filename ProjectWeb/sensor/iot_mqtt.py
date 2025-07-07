@@ -12,7 +12,8 @@ def mqtt_on_message(client, userdata, msg):
 # Do something
     d_msg = str(msg.payload.decode("utf-8"))
     iotData = json.loads(d_msg)
-    if iotData["id"] == ID:
+    print(iotData)
+    if iotData["node_id"] == ID:
         print("Received message on topic %s : %s" % (msg.topic, iotData))
         p = Event(
             node_id = iotData["node_id"],
