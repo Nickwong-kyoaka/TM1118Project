@@ -10,6 +10,7 @@ admin{
 Topic: IC/TeamC05
 
 Button
+Topic: IC/C05
 {"Stage":"Time"}
 {"Stage":"Temperature"}
 {"Stage":"Humidity"}
