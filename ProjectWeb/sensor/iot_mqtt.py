@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 from .models import Event
 import json
-print("Connect1111")
+
 mqtt_broker = "ia.ic.polyu.edu.hk" # Broker
 mqtt_port = 1883 # Default
 mqtt_qos = 1 # Quality of Service = 1
