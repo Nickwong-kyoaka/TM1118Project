@@ -12,10 +12,3 @@ class Event(models.Model):
 
     def __str__(self):
         return f'Event #{self.id}'
-
-
-class Event2(models.Model):
-    node_id = models.CharField(max_length=5)
-
-    def __str__(self):
-        return f'Event #{self.id}'
