@@ -4,6 +4,8 @@ from .models import Event
 from django.http import JsonResponse
 from django.db.models import Count
 
+
+
 def index(request):
     return render(request, 'sensor/index.html')
 
@@ -34,3 +36,8 @@ def sensor_data(request):
     
     data = list(queryset.values())
     return JsonResponse(data, safe=False)
+
+def chart_view(request):
+    # Get unique locations for the dropdown
+    locations = Event.objects.values_list('loc', flat=True).distinct()
+    return render(request, 'sensor/chart.html', {'locations': locations})

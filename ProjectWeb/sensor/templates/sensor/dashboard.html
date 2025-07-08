@@ -76,6 +76,29 @@
             font-size: 0.8rem;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
+        
+        .location-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .location-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .location-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -83,8 +106,12 @@
         <div class="container">
             <a class="navbar-brand" href="#">IoT Sensor Dashboard</a>
             <div class="d-flex">
+                <a href="/" class="btn btn-light btn-sm me-2">
+                    <i class="fas fa-home me-1"></i> Home
+                </a>
                 <a href="/dashboard/" class="btn btn-light btn-sm me-2 active">Dashboard</a>
-                <a href="/data/" class="btn btn-light btn-sm">Raw Data</a>
+                <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
+                <a href="/charts/" class="btn btn-light btn-sm me-2">Charts</a>
             </div>
         </div>
     </nav>
@@ -126,6 +153,9 @@
                                 </button>
                             </div>
                         </form>
+                        <div id="locationLegend" class="location-legend mt-3" style="display: none;">
+                            <!-- Location legend will be inserted here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -187,15 +217,21 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize charts with gradient colors
-            const tempChart = createChart('tempChart', 'Temperature (°C)', 
-                createGradient('tempChart', '#ff5e62', '#ff9966'));
-            const humChart = createChart('humChart', 'Humidity (%)', 
-                createGradient('humChart', '#36D1DC', '#5B86E5'));
-            const lightChart = createChart('lightChart', 'Light Level', 
-                createGradient('lightChart', '#f7971e', '#ffd200'));
-            const sndChart = createChart('sndChart', 'Sound Level (dB)', 
-                createGradient('sndChart', '#38ef7d', '#11998e'));
+            // Color palette for locations
+            const locationColors = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#8AC24A', '#FF5722', '#607D8B', '#E91E63'
+            ];
+            
+            // Initialize charts
+            const tempChart = createChart('tempChart', 'Temperature (°C)');
+            const humChart = createChart('humChart', 'Humidity (%)');
+            const lightChart = createChart('lightChart', 'Light Level');
+            const sndChart = createChart('sndChart', 'Sound Level (dB)');
+            
+            // Store location data
+            let locationData = {};
+            let allLocations = [];
 
             // Auto-refresh variables
             let refreshInterval = 5000; // 5 seconds
@@ -218,35 +254,25 @@
                 resetAutoRefresh();
             });
 
+            // Location select change handler
+            document.getElementById('location').addEventListener('change', function() {
+                const legend = document.getElementById('locationLegend');
+                if (this.value === '') {
+                    legend.style.display = 'flex';
+                } else {
+                    legend.style.display = 'none';
+                }
+            });
+
             // Initial data load
             fetchData();
 
-            function createGradient(chartId, color1, color2) {
-                const ctx = document.getElementById(chartId).getContext('2d');
-                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, color1);
-                gradient.addColorStop(1, color2);
-                return gradient;
-            }
-
-            function createChart(canvasId, label, color) {
+            function createChart(canvasId, label) {
                 const ctx = document.getElementById(canvasId).getContext('2d');
                 return new Chart(ctx, {
                     type: 'line',
                     data: {
-                        datasets: [{
-                            label: label,
-                            borderColor: color,
-                            backgroundColor: color,
-                            borderWidth: 2,
-                            pointBackgroundColor: '#fff',
-                            pointBorderColor: color,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            fill: true,
-                            tension: 0.3,
-                            data: []
-                        }]
+                        datasets: [] // Will be populated dynamically
                     },
                     options: {
                         responsive: true,
@@ -271,6 +297,19 @@
                                 },
                                 bodyFont: {
                                     size: 14
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += context.parsed.y.toFixed(2);
+                                        if (context.dataset.location) {
+                                            label += ` (${context.dataset.location})`;
+                                        }
+                                        return label;
+                                    }
                                 }
                             }
                         },
@@ -303,19 +342,121 @@
                 fetch(`/sensor/data?${params}`)
                     .then(response => response.json())
                     .then(data => {
-                        updateChart(tempChart, data, 'temp');
-                        updateChart(humChart, data, 'hum');
-                        updateChart(lightChart, data, 'light');
-                        updateChart(sndChart, data, 'snd');
+                        // Group data by location if "All Locations" is selected
+                        const selectedLocation = document.getElementById('location').value;
+                        
+                        if (selectedLocation === '') {
+                            // Show all locations
+                            locationData = {};
+                            allLocations = [...new Set(data.map(item => item.loc))];
+                            
+                            // Group data by location
+                            data.forEach(item => {
+                                if (!locationData[item.loc]) {
+                                    locationData[item.loc] = [];
+                                }
+                                locationData[item.loc].push(item);
+                            });
+                            
+                            // Update charts with multiple datasets
+                            updateMultiLocationChart(tempChart, 'temp', 'Temperature (°C)');
+                            updateMultiLocationChart(humChart, 'hum', 'Humidity (%)');
+                            updateMultiLocationChart(lightChart, 'light', 'Light Level');
+                            updateMultiLocationChart(sndChart, 'snd', 'Sound Level (dB)');
+                            
+                            // Update location legend
+                            updateLocationLegend();
+                        } else {
+                            // Show single location
+                            updateChart(tempChart, data, 'temp', 'Temperature (°C)');
+                            updateChart(humChart, data, 'hum', 'Humidity (%)');
+                            updateChart(lightChart, data, 'light', 'Light Level');
+                            updateChart(sndChart, data, 'snd', 'Sound Level (dB)');
+                        }
                     });
             }
 
-            function updateChart(chart, data, field) {
-                chart.data.datasets[0].data = data.map(item => ({
-                    x: item.date_created,
-                    y: item[field]
-                }));
+            function updateChart(chart, data, field, label) {
+                chart.data.datasets = [{
+                    label: label,
+                    borderColor: getLocationColor('default'),
+                    backgroundColor: getLocationColor('default'),
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: getLocationColor('default'),
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.3,
+                    data: data.map(item => ({
+                        x: item.date_created,
+                        y: item[field]
+                    }))
+                }];
                 chart.update();
+            }
+
+            function updateMultiLocationChart(chart, field, labelPrefix) {
+                chart.data.datasets = [];
+                
+                allLocations.forEach((loc, index) => {
+                    if (locationData[loc]) {
+                        chart.data.datasets.push({
+                            label: `${labelPrefix} - ${loc}`,
+                            location: loc,
+                            borderColor: getLocationColor(loc),
+                            backgroundColor: getLocationColor(loc, 0.2),
+                            borderWidth: 2,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: getLocationColor(loc),
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            fill: false,
+                            tension: 0.3,
+                            data: locationData[loc].map(item => ({
+                                x: item.date_created,
+                                y: item[field]
+                            }))
+                        });
+                    }
+                });
+                
+                chart.update();
+            }
+
+            function updateLocationLegend() {
+                const legendContainer = document.getElementById('locationLegend');
+                legendContainer.innerHTML = '';
+                
+                allLocations.forEach(loc => {
+                    const color = getLocationColor(loc);
+                    const badge = document.createElement('div');
+                    badge.className = 'location-badge';
+                    badge.style.backgroundColor = `${color}20`;
+                    badge.style.border = `1px solid ${color}`;
+                    badge.innerHTML = `
+                        <span class="location-color" style="background-color: ${color};"></span>
+                        ${loc}
+                    `;
+                    legendContainer.appendChild(badge);
+                });
+            }
+
+            function getLocationColor(location, opacity = 1) {
+                // Create a consistent color for each location
+                if (location === 'default') return locationColors[0];
+                
+                const index = allLocations.indexOf(location) % locationColors.length;
+                const color = locationColors[index];
+                
+                if (opacity < 1) {
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                }
+                
+                return color;
             }
 
             function startAutoRefresh() {
