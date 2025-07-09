@@ -76,6 +76,42 @@
             display: flex;
             gap: 10px;
         }
+        
+        .stats-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+        }
+        
+        .average-line {
+            border-top: 2px dashed #FF6384;
+            position: absolute;
+            width: 100%;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .average-label {
+            position: absolute;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            z-index: 101;
+        }
     </style>
 </head>
 <body>
@@ -87,8 +123,8 @@
                     <i class="fas fa-home me-1"></i> Home
                 </a>
                 <a href="/dashboard/" class="btn btn-light btn-sm me-2">Dashboard</a>
+                <a href="/charts/" class="btn btn-light btn-sm me-2 active">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
-                <a href="/charts/" class="btn btn-light btn-sm active">Charts</a>
             </div>
         </div>
     </nav>
@@ -113,16 +149,6 @@
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <label for="chartType" class="form-label">Chart Type</label>
-                                    <select class="form-select" id="chartType" name="chartType">
-                                        <option value="line">Line Chart</option>
-                                        <option value="bar">Bar Chart</option>
-                                        <option value="radar">Radar Chart</option>
-                                        <option value="pie">Pie Chart</option>
-                                        <option value="doughnut">Doughnut Chart</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
                                     <label for="dataType" class="form-label">Data Type</label>
                                     <select class="form-select" id="dataType" name="dataType">
                                         <option value="temp">Temperature</option>
@@ -141,6 +167,16 @@
                                         <option value="custom">Custom</option>
                                     </select>
                                 </div>
+                                <div class="col-md-3">
+                                    <label for="statType" class="form-label">Display Mode</label>
+                                    <select class="form-select" id="statType" name="statType">
+                                        <option value="raw">Raw Data</option>
+                                        <option value="avg">Hourly Average</option>
+                                        <option value="daily">Daily Average</option>
+                                        <option value="max">Max Values</option>
+                                        <option value="min">Min Values</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="row mt-3" id="customDateRange" style="display: none;">
                                 <div class="col-md-6">
@@ -154,7 +190,7 @@
                             </div>
                             <div class="d-flex justify-content-end mt-3">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-sync-alt me-2"></i>Update Chart
+                                    <i class="fas fa-sync-alt me-2"></i>Update Charts
                                 </button>
                             </div>
                         </form>
@@ -163,15 +199,83 @@
             </div>
         </div>
 
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-gradient-success text-white">
+                        <i class="fas fa-chart-line me-2"></i>Line Chart
+                        <div id="lineChartAverage" class="average-label" style="display: none;"></div>
+                    </div>
+                    <div class="card-body" style="position: relative;">
+                        <div id="lineChartAverageLine" class="average-line" style="display: none;"></div>
+                        <div class="chart-container">
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-gradient-info text-white">
+                        <i class="fas fa-chart-bar me-2"></i>Bar Chart
+                        <div id="barChartAverage" class="average-label" style="display: none;"></div>
+                    </div>
+                    <div class="card-body" style="position: relative;">
+                        <div id="barChartAverageLine" class="average-line" style="display: none;"></div>
+                        <div class="chart-container">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-gradient-success text-white">
-                        <i class="fas fa-chart-area me-2"></i>Sensor Data Visualization
+                    <div class="card-header bg-gradient-warning text-white">
+                        <i class="fas fa-calculator me-2"></i>Statistics Summary
                     </div>
                     <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="dataChart"></canvas>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="stats-container">
+                                    <h5>Current Range Statistics</h5>
+                                    <div class="stat-item">
+                                        <span>Average:</span>
+                                        <span class="stat-value" id="stat-avg">--</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span>Maximum:</span>
+                                        <span class="stat-value" id="stat-max">--</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span>Minimum:</span>
+                                        <span class="stat-value" id="stat-min">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="stats-container">
+                                    <h5>Data Points</h5>
+                                    <div class="stat-item">
+                                        <span>Total Data Points:</span>
+                                        <span class="stat-value" id="stat-count">--</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span>First Timestamp:</span>
+                                        <span class="stat-value" id="stat-first">--</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span>Last Timestamp:</span>
+                                        <span class="stat-value" id="stat-last">--</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span>Time Span:</span>
+                                        <span class="stat-value" id="stat-span">--</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -203,13 +307,18 @@
                 '#FF9F40', '#8AC24A', '#FF5722', '#607D8B', '#E91E63'
             ];
             
-            // Initialize chart
-            let dataChart = createChart('dataChart', 'line', 'Temperature');
+            // Initialize charts
+            let lineChart = createChart('lineChart', 'line');
+            let barChart = createChart('barChart', 'bar');
             
             // Auto-refresh variables
-            let refreshInterval = 300000; // 30 seconds
+            let refreshInterval = 300000; // 5 min
             let refreshTimer;
-            let secondsCounter = 300;
+            let secondsCounter = 301;
+            
+            // Current data cache
+            let currentData = [];
+            let currentAverage = 0;
             
             // Start auto-refresh
             startAutoRefresh();
@@ -217,7 +326,7 @@
             // Form submission handler
             document.getElementById('chartConfigForm').addEventListener('submit', function(e) {
                 e.preventDefault();
-                updateChart();
+                updateCharts();
                 resetAutoRefresh();
             });
 
@@ -226,26 +335,35 @@
                 const customRange = document.getElementById('customDateRange');
                 if (this.value === 'custom') {
                     customRange.style.display = 'flex';
+                    // Set default dates for custom range
+                    const now = new Date();
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(now.getDate() - 7);
+                    
+                    document.getElementById('startDate').value = oneWeekAgo.toISOString().slice(0, 16);
+                    document.getElementById('endDate').value = now.toISOString().slice(0, 16);
                 } else {
                     customRange.style.display = 'none';
                 }
             });
 
             // Initial chart load
-            updateChart();
+            updateCharts();
 
-            function createChart(canvasId, type, label) {
+            function createChart(canvasId, type) {
                 const ctx = document.getElementById(canvasId).getContext('2d');
                 return new Chart(ctx, {
                     type: type,
                     data: {
                         labels: [],
                         datasets: [{
-                            label: label,
+                            label: '',
                             data: [],
-                            backgroundColor: chartColors[0],
+                            backgroundColor: type === 'bar' ? chartColors[1] : chartColors[0] + '40',
                             borderColor: chartColors[0],
-                            borderWidth: 2
+                            borderWidth: 2,
+                            fill: type === 'line',
+                            tension: type === 'line' ? 0.1 : 0
                         }]
                     },
                     options: getChartOptions(type)
@@ -253,7 +371,7 @@
             }
 
             function getChartOptions(type) {
-                const commonOptions = {
+                return {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
@@ -282,44 +400,40 @@
                         x: {
                             type: 'time',
                             time: {
-                                tooltipFormat: 'MMM D, h:mm A'
+                                tooltipFormat: 'MMM D, h:mm A',
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM D, hA'
+                                }
                             },
                             grid: {
                                 display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
                             }
                         },
                         y: {
-                            beginAtZero: type === 'pie' || type === 'doughnut',
+                            beginAtZero: false,
                             grid: {
                                 color: 'rgba(0,0,0,0.05)'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Value'
                             }
                         }
                     }
                 };
-
-                if (type === 'radar') {
-                    return {
-                        ...commonOptions,
-                        scales: {
-                            r: {
-                                angleLines: {
-                                    display: true
-                                },
-                                suggestedMin: 0
-                            }
-                        }
-                    };
-                }
-
-                return commonOptions;
             }
 
-            function updateChart() {
+            function updateCharts() {
                 const formData = new FormData(document.getElementById('chartConfigForm'));
                 const params = new URLSearchParams(formData).toString();
-                const chartType = document.getElementById('chartType').value;
                 const dataType = document.getElementById('dataType').value;
                 const timeRange = document.getElementById('timeRange').value;
+                const statType = document.getElementById('statType').value;
 
                 // Calculate date range if not custom
                 let startDate, endDate;
@@ -329,71 +443,264 @@
                     startDate = new Date();
                     startDate.setHours(endDate.getHours() - hours);
                 } else {
-                    startDate = document.getElementById('startDate').value;
-                    endDate = document.getElementById('endDate').value;
-                }
-
-                // Update chart type if changed
-                if (dataChart.config.type !== chartType) {
-                    dataChart.destroy();
-                    dataChart = createChart('dataChart', chartType, getDataTypeLabel(dataType));
+                    startDate = new Date(document.getElementById('startDate').value);
+                    endDate = new Date(document.getElementById('endDate').value);
                 }
 
                 fetch(`/sensor/data?${params}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
                     .then(response => response.json())
                     .then(data => {
-                        const location = document.getElementById('location').value;
-                        const labels = data.map(item => item.date_created);
-                        const chartData = data.map(item => item[dataType]);
-                        
-                        // Update chart data based on chart type
-                        if (chartType === 'pie' || chartType === 'doughnut') {
-                            // For pie/doughnut charts, we might want to show averages or sums
-                            const average = chartData.reduce((a, b) => a + b, 0) / chartData.length;
-                            dataChart.data.labels = [getDataTypeLabel(dataType)];
-                            dataChart.data.datasets = [{
-                                label: getDataTypeLabel(dataType),
-                                data: [average],
-                                backgroundColor: chartColors,
-                                borderColor: '#fff',
-                                borderWidth: 1
-                            }];
-                        } else if (chartType === 'radar') {
-                            // Radar charts work better with multiple data points
-                            dataChart.data.labels = labels;
-                            dataChart.data.datasets = [{
-                                label: `${getDataTypeLabel(dataType)}${location ? ` (${location})` : ''}`,
-                                data: chartData,
-                                backgroundColor: chartColors[0] + '40',
-                                borderColor: chartColors[0],
-                                borderWidth: 2,
-                                pointBackgroundColor: chartColors[0]
-                            }];
-                        } else {
-                            // Line and bar charts
-                            dataChart.data.labels = labels;
-                            dataChart.data.datasets = [{
-                                label: `${getDataTypeLabel(dataType)}${location ? ` (${location})` : ''}`,
-                                data: chartData,
-                                backgroundColor: chartType === 'bar' ? chartColors[0] : chartColors[0] + '40',
-                                borderColor: chartColors[0],
-                                borderWidth: 2,
-                                fill: chartType === 'line',
-                                tension: 0.1
-                            }];
+                        if (!data || data.length === 0) {
+                            console.error('No data received');
+                            return;
                         }
                         
-                        // Update chart title
-                        dataChart.options.plugins.title = {
-                            display: true,
-                            text: `${getDataTypeLabel(dataType)} Data (${getChartTypeName(chartType)})`,
-                            font: {
-                                size: 16
-                            }
-                        };
+                        currentData = data;
+                        const location = document.getElementById('location').value;
+                        const dataLabel = `${getDataTypeLabel(dataType)}${location ? ` (${location})` : ''}`;
                         
-                        dataChart.update();
+                        // Calculate the overall average
+                        const values = data.map(item => item[dataType]);
+                        currentAverage = values.reduce((a, b) => a + b, 0) / values.length;
+                        
+                        // Process data based on stat type
+                        let processedData;
+                        switch(statType) {
+                            case 'avg':
+                                processedData = calculateHourlyAverages(data, dataType);
+                                break;
+                            case 'daily':
+                                processedData = calculateDailyAverages(data, dataType);
+                                break;
+                            case 'max':
+                                processedData = calculateMaxValues(data, dataType);
+                                break;
+                            case 'min':
+                                processedData = calculateMinValues(data, dataType);
+                                break;
+                            default:
+                                processedData = data.map(item => ({
+                                    x: new Date(item.date_created),
+                                    y: item[dataType]
+                                }));
+                        }
+                        
+                        // Update line chart
+                        updateChart(lineChart, 'line', processedData, dataLabel);
+                        
+                        // Update bar chart
+                        updateChart(barChart, 'bar', processedData, dataLabel);
+                        
+                        // Update statistics
+                        updateStatistics(data, dataType);
+                        
+                        // Show/hide average line based on stat type
+                        const showAverage = (statType === 'avg' || statType === 'daily');
+                        updateAverageLine(showAverage);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
                     });
+            }
+            
+            function updateAverageLine(show) {
+                const lineChartContainer = document.querySelector('#lineChart').parentElement;
+                const barChartContainer = document.querySelector('#barChart').parentElement;
+                
+                const lineAverageLine = document.getElementById('lineChartAverageLine');
+                const lineAverageLabel = document.getElementById('lineChartAverage');
+                const barAverageLine = document.getElementById('barChartAverageLine');
+                const barAverageLabel = document.getElementById('barChartAverage');
+                
+                if (show) {
+                    // Position the average line and label
+                    const lineChartArea = lineChart.scales.y;
+                    const barChartArea = barChart.scales.y;
+                    
+                    const lineY = lineChartArea.getPixelForValue(currentAverage);
+                    const barY = barChartArea.getPixelForValue(currentAverage);
+                    
+                    lineAverageLine.style.display = 'block';
+                    lineAverageLine.style.top = `${lineY}px`;
+                    lineAverageLabel.style.display = 'block';
+                    lineAverageLabel.textContent = `Avg: ${currentAverage.toFixed(2)}`;
+                    lineAverageLabel.style.top = `${lineY - 15}px`;
+                    
+                    barAverageLine.style.display = 'block';
+                    barAverageLine.style.top = `${barY}px`;
+                    barAverageLabel.style.display = 'block';
+                    barAverageLabel.textContent = `Avg: ${currentAverage.toFixed(2)}`;
+                    barAverageLabel.style.top = `${barY - 15}px`;
+                } else {
+                    lineAverageLine.style.display = 'none';
+                    lineAverageLabel.style.display = 'none';
+                    barAverageLine.style.display = 'none';
+                    barAverageLabel.style.display = 'none';
+                }
+            }
+            
+            function updateChart(chart, type, data, label) {
+                chart.data.labels = data.map(item => item.x);
+                chart.data.datasets = [{
+                    label: label,
+                    data: data.map(item => item.y),
+                    backgroundColor: type === 'bar' ? chartColors[1] : chartColors[0] + '40',
+                    borderColor: chartColors[0],
+                    borderWidth: 2,
+                    fill: type === 'line',
+                    tension: type === 'line' ? 0.1 : 0
+                }];
+                
+                // Adjust x-axis scale based on time range
+                const timeRange = document.getElementById('timeRange').value;
+                let timeUnit = 'hour';
+                let displayFormat = 'MMM D, hA';
+                
+                if (timeRange === '168' || document.getElementById('statType').value === 'daily') {
+                    timeUnit = 'day';
+                    displayFormat = 'MMM D';
+                }
+                
+                chart.options.scales.x.time = {
+                    tooltipFormat: 'MMM D, h:mm A',
+                    unit: timeUnit,
+                    displayFormats: {
+                        [timeUnit]: displayFormat
+                    }
+                };
+                
+                chart.update();
+            }
+            
+            function calculateHourlyAverages(data, dataType) {
+                const hourlyData = {};
+                
+                data.forEach(item => {
+                    const date = new Date(item.date_created);
+                    const hourKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
+                    
+                    if (!hourlyData[hourKey]) {
+                        hourlyData[hourKey] = {
+                            sum: 0,
+                            count: 0,
+                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
+                        };
+                    }
+                    
+                    hourlyData[hourKey].sum += item[dataType];
+                    hourlyData[hourKey].count++;
+                });
+                
+                return Object.values(hourlyData).map(hour => ({
+                    x: hour.timestamp,
+                    y: hour.sum / hour.count
+                }));
+            }
+            
+            function calculateDailyAverages(data, dataType) {
+                const dailyData = {};
+                
+                data.forEach(item => {
+                    const date = new Date(item.date_created);
+                    const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+                    
+                    if (!dailyData[dayKey]) {
+                        dailyData[dayKey] = {
+                            sum: 0,
+                            count: 0,
+                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate())
+                        };
+                    }
+                    
+                    dailyData[dayKey].sum += item[dataType];
+                    dailyData[dayKey].count++;
+                });
+                
+                return Object.values(dailyData).map(day => ({
+                    x: day.timestamp,
+                    y: day.sum / day.count
+                }));
+            }
+            
+            function calculateMaxValues(data, dataType) {
+                const hourlyMax = {};
+                
+                data.forEach(item => {
+                    const date = new Date(item.date_created);
+                    const hourKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
+                    
+                    if (!hourlyMax[hourKey] || item[dataType] > hourlyMax[hourKey].max) {
+                        hourlyMax[hourKey] = {
+                            max: item[dataType],
+                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
+                        };
+                    }
+                });
+                
+                return Object.values(hourlyMax).map(hour => ({
+                    x: hour.timestamp,
+                    y: hour.max
+                }));
+            }
+            
+            function calculateMinValues(data, dataType) {
+                const hourlyMin = {};
+                
+                data.forEach(item => {
+                    const date = new Date(item.date_created);
+                    const hourKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
+                    
+                    if (!hourlyMin[hourKey] || item[dataType] < hourlyMin[hourKey].min) {
+                        hourlyMin[hourKey] = {
+                            min: item[dataType],
+                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
+                        };
+                    }
+                });
+                
+                return Object.values(hourlyMin).map(hour => ({
+                    x: hour.timestamp,
+                    y: hour.min
+                }));
+            }
+            
+            function updateStatistics(data, dataType) {
+                if (!data || data.length === 0) return;
+                
+                const values = data.map(item => item[dataType]);
+                const dates = data.map(item => new Date(item.date_created));
+                
+                // Calculate statistics
+                const sum = values.reduce((a, b) => a + b, 0);
+                const avg = sum / values.length;
+                const max = Math.max(...values);
+                const min = Math.min(...values);
+                
+                // Time calculations
+                const firstDate = dates[0];
+                const lastDate = dates[dates.length - 1];
+                const timeSpan = formatTimeSpan(lastDate - firstDate);
+                
+                // Update DOM elements
+                document.getElementById('stat-avg').textContent = avg.toFixed(2);
+                document.getElementById('stat-max').textContent = max.toFixed(2);
+                document.getElementById('stat-min').textContent = min.toFixed(2);
+                document.getElementById('stat-count').textContent = values.length;
+                document.getElementById('stat-first').textContent = firstDate.toLocaleString();
+                document.getElementById('stat-last').textContent = lastDate.toLocaleString();
+                document.getElementById('stat-span').textContent = timeSpan;
+            }
+            
+            function formatTimeSpan(ms) {
+                const seconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+                const days = Math.floor(hours / 24);
+                
+                if (days > 0) return `${days}d ${hours % 24}h`;
+                if (hours > 0) return `${hours}h ${minutes % 60}m`;
+                if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+                return `${seconds}s`;
             }
 
             function getDataTypeLabel(type) {
@@ -406,18 +713,8 @@
                 return labels[type] || type;
             }
 
-            function getChartTypeName(type) {
-                const names = {
-                    'line': 'Line Chart',
-                    'bar': 'Bar Chart',
-                    'radar': 'Radar Chart',
-                    'pie': 'Pie Chart',
-                    'doughnut': 'Doughnut Chart'
-                };
-                return names[type] || type;
-            }
-
             function startAutoRefresh() {
+                document.getElementById('refreshTimer').textContent = secondsCounter;
                 // Update timer display every second
                 const timerElement = document.getElementById('refreshTimer');
                 const timerInterval = setInterval(() => {
@@ -426,9 +723,9 @@
                     timerElement.textContent = secondsCounter;
                 }, 1000);
 
-                // Refresh data every 30 seconds
+                // Refresh data every 5min
                 refreshTimer = setInterval(() => {
-                    updateChart();
+                    updateCharts();
                     secondsCounter = 300; // Reset counter after refresh
                 }, refreshInterval);
             }

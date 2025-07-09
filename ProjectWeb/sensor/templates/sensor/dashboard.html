@@ -99,6 +99,32 @@
             margin-right: 5px;
             display: inline-block;
         }
+        
+        .sensor-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-group input {
+            margin-right: 5px;
+        }
+        
+        .full-width-chart {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 100% !important;
+        }
+        
+        .chart-container {
+            height: 400px;
+        }
     </style>
 </head>
 <body>
@@ -110,8 +136,8 @@
                     <i class="fas fa-home me-1"></i> Home
                 </a>
                 <a href="/dashboard/" class="btn btn-light btn-sm me-2 active">Dashboard</a>
+                <a href="/charts/" class="btn btn-light btn-sm me-2">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
-                <a href="/charts/" class="btn btn-light btn-sm me-2">Charts</a>
             </div>
         </div>
     </nav>
@@ -136,12 +162,53 @@
                                     </select>
                                 </div>
                                 <div class="col-md-4">
+                                    <label for="timeRange" class="form-label">Time Range</label>
+                                    <select class="form-select" id="timeRange" name="timeRange">
+                                        <option value="custom">Custom Range</option>
+                                        <option value="1h">Last 1 Hour</option>
+                                        <option value="6h">Last 6 Hours</option>
+                                        <option value="24h">Last 24 Hours</option>
+                                        <option value="7d">Last 7 Days</option>
+                                        <option value="30d">Last 30 Days</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="sensorType" class="form-label">Sensor Values</label>
+                                    <select class="form-select" id="sensorType" name="sensorType">
+                                        <option value="all">All Values</option>
+                                        <option value="temp">Temperature Only</option>
+                                        <option value="hum">Humidity Only</option>
+                                        <option value="light">Light Only</option>
+                                        <option value="snd">Sound Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
                                     <label for="startDate" class="form-label">Start Date</label>
                                     <input type="datetime-local" class="form-control" id="startDate" name="startDate">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label for="endDate" class="form-label">End Date</label>
                                     <input type="datetime-local" class="form-control" id="endDate" name="endDate">
+                                </div>
+                            </div>
+                            <div class="sensor-checkboxes mt-3">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="showTemp" name="showTemp" checked>
+                                    <label for="showTemp">Temperature</label>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="showHum" name="showHum" checked>
+                                    <label for="showHum">Humidity</label>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="showLight" name="showLight" checked>
+                                    <label for="showLight">Light</label>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="showSound" name="showSound" checked>
+                                    <label for="showSound">Sound</label>
                                 </div>
                             </div>
                             <div class="d-flex justify-content-end mt-3">
@@ -161,47 +228,44 @@
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-lg-6">
-                <div class="card mb-4">
+        <div class="row" id="chartsRow">
+            <div class="col-lg-6 chart-col" id="tempCol">
+                <div class="card mb-4" id="tempCard">
                     <div class="card-header bg-gradient-danger text-white">
                         <i class="fas fa-temperature-high me-2"></i>Temperature Over Time
                     </div>
-                    <div class="card-body">
-                        <canvas id="tempChart" height="250"></canvas>
+                    <div class="card-body chart-container">
+                        <canvas id="tempChart" height="400"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="card mb-4">
+            <div class="col-lg-6 chart-col" id="humCol">
+                <div class="card mb-4" id="humCard">
                     <div class="card-header bg-gradient-info text-white">
                         <i class="fas fa-tint me-2"></i>Humidity Over Time
                     </div>
-                    <div class="card-body">
-                        <canvas id="humChart" height="250"></canvas>
+                    <div class="card-body chart-container">
+                        <canvas id="humChart" height="400"></canvas>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="row">
-            <div class="col-lg-6">
-                <div class="card mb-4">
+            <div class="col-lg-6 chart-col" id="lightCol">
+                <div class="card mb-4" id="lightCard">
                     <div class="card-header bg-gradient-warning text-white">
                         <i class="fas fa-sun me-2"></i>Light Levels Over Time
                     </div>
-                    <div class="card-body">
-                        <canvas id="lightChart" height="250"></canvas>
+                    <div class="card-body chart-container">
+                        <canvas id="lightChart" height="400"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="card mb-4">
+            <div class="col-lg-6 chart-col" id="sndCol">
+                <div class="card mb-4" id="sndCard">
                     <div class="card-header bg-gradient-success text-white">
                         <i class="fas fa-volume-up me-2"></i>Sound Levels Over Time
                     </div>
-                    <div class="card-body">
-                        <canvas id="sndChart" height="250"></canvas>
+                    <div class="card-body chart-container">
+                        <canvas id="sndChart" height="400"></canvas>
                     </div>
                 </div>
             </div>
@@ -234,9 +298,9 @@
             let allLocations = [];
 
             // Auto-refresh variables
-            let refreshInterval = (300000); // 5min
+            let refreshInterval = 300000; // 5 minutes
             let refreshTimer;
-            let secondsCounter = (300);
+            let secondsCounter = 300;
             
             // Start auto-refresh
             startAutoRefresh();
@@ -250,6 +314,8 @@
 
             // Reset form handler
             document.querySelector('button[type="reset"]').addEventListener('click', function() {
+                // Reset time range to custom
+                document.getElementById('timeRange').value = 'custom';
                 setTimeout(fetchData, 100);
                 resetAutoRefresh();
             });
@@ -262,6 +328,32 @@
                 } else {
                     legend.style.display = 'none';
                 }
+            });
+
+            // Time range select change handler
+            document.getElementById('timeRange').addEventListener('change', function() {
+                if (this.value !== 'custom') {
+                    updateTimeRange(this.value);
+                }
+            });
+
+            // Sensor type select change handler
+            document.getElementById('sensorType').addEventListener('change', function() {
+                updateSensorVisibility(this.value);
+            });
+
+            // Sensor checkbox change handlers
+            document.getElementById('showTemp').addEventListener('change', function() {
+                updateChartVisibility('temp', this.checked);
+            });
+            document.getElementById('showHum').addEventListener('change', function() {
+                updateChartVisibility('hum', this.checked);
+            });
+            document.getElementById('showLight').addEventListener('change', function() {
+                updateChartVisibility('light', this.checked);
+            });
+            document.getElementById('showSound').addEventListener('change', function() {
+                updateChartVisibility('snd', this.checked);
             });
 
             // Initial data load
@@ -459,25 +551,106 @@
                 return color;
             }
 
+            function updateTimeRange(range) {
+                const now = new Date();
+                const endDate = now.toISOString().slice(0, 16);
+                let startDate = new Date();
+                
+                switch(range) {
+                    case '1h':
+                        startDate.setHours(startDate.getHours() - 1);
+                        break;
+                    case '6h':
+                        startDate.setHours(startDate.getHours() - 6);
+                        break;
+                    case '24h':
+                        startDate.setDate(startDate.getDate() - 1);
+                        break;
+                    case '7d':
+                        startDate.setDate(startDate.getDate() - 7);
+                        break;
+                    case '30d':
+                        startDate.setDate(startDate.getDate() - 30);
+                        break;
+                }
+                
+                document.getElementById('startDate').value = startDate.toISOString().slice(0, 16);
+                document.getElementById('endDate').value = endDate;
+                
+                // Trigger data fetch
+                fetchData();
+            }
+
+            function updateSensorVisibility(sensorType) {
+                const showAll = sensorType === 'all';
+                
+                document.getElementById('showTemp').checked = showAll || sensorType === 'temp';
+                document.getElementById('showHum').checked = showAll || sensorType === 'hum';
+                document.getElementById('showLight').checked = showAll || sensorType === 'light';
+                document.getElementById('showSound').checked = showAll || sensorType === 'snd';
+                
+                // Update chart visibility
+                updateChartVisibility('temp', showAll || sensorType === 'temp');
+                updateChartVisibility('hum', showAll || sensorType === 'hum');
+                updateChartVisibility('light', showAll || sensorType === 'light');
+                updateChartVisibility('snd', showAll || sensorType === 'snd');
+            }
+
+            function updateChartVisibility(chartType, isVisible) {
+                const chartCol = document.getElementById(`${chartType}Col`);
+                const chartCard = document.getElementById(`${chartType}Card`);
+                
+                if (isVisible) {
+                    chartCol.style.display = 'block';
+                    chartCard.style.display = 'block';
+                } else {
+                    chartCol.style.display = 'none';
+                    chartCard.style.display = 'none';
+                }
+                
+                // Count visible charts
+                const visibleCharts = [
+                    document.getElementById('showTemp').checked,
+                    document.getElementById('showHum').checked,
+                    document.getElementById('showLight').checked,
+                    document.getElementById('showSound').checked
+                ].filter(Boolean).length;
+                
+                // Update chart widths based on how many are visible
+                const chartCols = document.querySelectorAll('.chart-col');
+                chartCols.forEach(col => {
+                    if (col.style.display !== 'none') {
+                        if (visibleCharts === 1) {
+                            col.classList.add('full-width-chart');
+                            col.classList.remove('col-lg-6');
+                        } else {
+                            col.classList.remove('full-width-chart');
+                            col.classList.add('col-lg-6');
+                        }
+                    }
+                });
+            }
+
             function startAutoRefresh() {
+                document.getElementById('refreshTimer').textContent = secondsCounter;
                 // Update timer display every second
                 const timerElement = document.getElementById('refreshTimer');
                 const timerInterval = setInterval(() => {
                     secondsCounter--;
-                    if(secondsCounter <= 0) secondsCounter = (300);
+                    if(secondsCounter <= 0) secondsCounter = 300;
                     timerElement.textContent = secondsCounter;
                 }, 1000);
 
-                // Refresh data every 5 seconds
+                // Refresh data every 5 minutes
                 refreshTimer = setInterval(() => {
                     fetchData();
-                    secondsCounter = (300); // Reset counter after refresh
+                    secondsCounter = 300; // Reset counter after refresh
                 }, refreshInterval);
             }
 
             function resetAutoRefresh() {
                 clearInterval(refreshTimer);
-                secondsCounter = (5*60);
+                secondsCounter = 300;
                 document.getElementById('refreshTimer').textContent = secondsCounter;
                 startAutoRefresh();
             }

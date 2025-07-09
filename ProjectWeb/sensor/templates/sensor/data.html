@@ -97,8 +97,8 @@
                     <i class="fas fa-home me-1"></i> Home
                 </a>
                 <a href="/dashboard/" class="btn btn-light btn-sm me-2">Dashboard</a>
+                <a href="/charts/" class="btn btn-light btn-sm me-2">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2 active">Raw Data</a>
-                <a href="/charts/" class="btn btn-light btn-sm me-2">Charts</a>
             </div>
         </div>
     </nav>
@@ -155,9 +155,9 @@
                         <tr>
                             <th>Node ID</th>
                             <th>Location</th>
-                            <th>Temp (°C)</th>
+                            <th>Temperature (°C)</th>
                             <th>Humidity (%)</th>
-                            <th>Light</th>
+                            <th>Light (%)</th>
                             <th>Sound (dB)</th>
                             <th>Timestamp</th>
                         </tr>
@@ -182,9 +182,9 @@
     <script>
         $(document).ready(function() {
             // Auto-refresh variables
-            let refreshInterval = (300000); // 5 seconds
+            let refreshInterval = (300000); // 5 min
             let refreshTimer;
-            let secondsCounter = (300);
+            let secondsCounter = (301);
             let table;
             
             // Initialize DataTable
@@ -212,7 +212,7 @@
                         { 
                             data: 'light',
                             render: function(data) {
-                                return `<span class="badge bg-warning bg-gradient">${data}</span>`;
+                                return `<span class="badge bg-warning bg-gradient">${data}%</span>`;
                             }
                         },
                         { 
@@ -250,6 +250,7 @@
             
             // Start auto-refresh
             function startAutoRefresh() {
+                document.getElementById('refreshTimer').textContent = secondsCounter;
                 // Update timer display every second
                 const timerElement = document.getElementById('refreshTimer');
                 const timerInterval = setInterval(() => {
@@ -258,7 +259,7 @@
                     timerElement.textContent = secondsCounter;
                 }, 1000);
 
-                // Refresh data every 5 seconds
+                // Refresh data every 4 min
                 refreshTimer = setInterval(() => {
                     refreshData();
                     secondsCounter = (300); // Reset counter after refresh
@@ -279,7 +280,7 @@
                 document.getElementById('refreshTimer').textContent = secondsCounter;
                 startAutoRefresh();
             }
-            
+
             // Initialize table and start auto-refresh
             initializeTable();
             startAutoRefresh();

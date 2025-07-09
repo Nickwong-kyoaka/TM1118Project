@@ -1,6 +1,7 @@
 from django.contrib import admin
-
+from .models import Event, Data_Receive
 # Register your models here.
-from .models import Event
+
 
 admin.site.register(Event)
+admin.site.register(Data_Receive)
