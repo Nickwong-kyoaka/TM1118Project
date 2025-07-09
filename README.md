@@ -6,7 +6,7 @@ admin{
     password:"tm1118projectadmin"
 }
 
-{"PART":9,"MOVED":"Yes", "Speed":100, "Start":"True","Temp":29,"Hum":45}
+{"PART":9,"MOVED":"Yes",  "Start":"True","Temp":29,"Hum":45}
 Topic: IC/TeamC05
 
 Button
