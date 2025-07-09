@@ -95,22 +95,20 @@
             font-weight: bold;
         }
         
-        .average-line {
-            border-top: 2px dashed #FF6384;
-            position: absolute;
+        .average-table {
             width: 100%;
-            z-index: 100;
-            pointer-events: none;
+            margin-top: 15px;
+            border-collapse: collapse;
         }
         
-        .average-label {
-            position: absolute;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-size: 12px;
-            z-index: 101;
+        .average-table th, .average-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .average-table th {
+            background-color: #f2f2f2;
         }
     </style>
 </head>
@@ -125,6 +123,7 @@
                 <a href="/dashboard/" class="btn btn-light btn-sm me-2">Dashboard</a>
                 <a href="/charts/" class="btn btn-light btn-sm me-2 active">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
+                <a href="/events/integrated" class="btn btn-light btn-sm me-2">Event Dashboard</a>
             </div>
         </div>
     </nav>
@@ -142,7 +141,6 @@
                                 <div class="col-md-3">
                                     <label for="location" class="form-label">Location</label>
                                     <select class="form-select" id="location" name="location">
-                                        <option value="">All Locations</option>
                                         {% for loc in locations %}
                                             <option value="{{ loc }}">{{ loc }}</option>
                                         {% endfor %}
@@ -204,12 +202,22 @@
                 <div class="card">
                     <div class="card-header bg-gradient-success text-white">
                         <i class="fas fa-chart-line me-2"></i>Line Chart
-                        <div id="lineChartAverage" class="average-label" style="display: none;"></div>
                     </div>
-                    <div class="card-body" style="position: relative;">
-                        <div id="lineChartAverageLine" class="average-line" style="display: none;"></div>
+                    <div class="card-body">
                         <div class="chart-container">
                             <canvas id="lineChart"></canvas>
+                        </div>
+                        <div id="lineChartAverageTable" style="display: none;">
+                            <h5 class="mt-3">Hourly Averages</h5>
+                            <table class="average-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hour</th>
+                                        <th>Average Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lineChartAverageTableBody"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -218,12 +226,22 @@
                 <div class="card">
                     <div class="card-header bg-gradient-info text-white">
                         <i class="fas fa-chart-bar me-2"></i>Bar Chart
-                        <div id="barChartAverage" class="average-label" style="display: none;"></div>
                     </div>
-                    <div class="card-body" style="position: relative;">
-                        <div id="barChartAverageLine" class="average-line" style="display: none;"></div>
+                    <div class="card-body">
                         <div class="chart-container">
                             <canvas id="barChart"></canvas>
+                        </div>
+                        <div id="barChartAverageTable" style="display: none;">
+                            <h5 class="mt-3">Daily Averages</h5>
+                            <table class="average-table">
+                                <thead>
+                                    <tr>
+                                        <th>Day</th>
+                                        <th>Average Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="barChartAverageTableBody"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -468,21 +486,26 @@
                         switch(statType) {
                             case 'avg':
                                 processedData = calculateHourlyAverages(data, dataType);
+                                updateHourlyAverageTable(processedData, dataType);
                                 break;
                             case 'daily':
                                 processedData = calculateDailyAverages(data, dataType);
+                                updateDailyAverageTable(processedData, dataType);
                                 break;
                             case 'max':
                                 processedData = calculateMaxValues(data, dataType);
+                                hideAverageTables();
                                 break;
                             case 'min':
                                 processedData = calculateMinValues(data, dataType);
+                                hideAverageTables();
                                 break;
                             default:
                                 processedData = data.map(item => ({
                                     x: new Date(item.date_created),
                                     y: item[dataType]
                                 }));
+                                hideAverageTables();
                         }
                         
                         // Update line chart
@@ -493,50 +516,59 @@
                         
                         // Update statistics
                         updateStatistics(data, dataType);
-                        
-                        // Show/hide average line based on stat type
-                        const showAverage = (statType === 'avg' || statType === 'daily');
-                        updateAverageLine(showAverage);
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
                     });
             }
             
-            function updateAverageLine(show) {
-                const lineChartContainer = document.querySelector('#lineChart').parentElement;
-                const barChartContainer = document.querySelector('#barChart').parentElement;
+            function updateHourlyAverageTable(data, dataType) {
+                const tableBody = document.getElementById('lineChartAverageTableBody');
+                tableBody.innerHTML = '';
                 
-                const lineAverageLine = document.getElementById('lineChartAverageLine');
-                const lineAverageLabel = document.getElementById('lineChartAverage');
-                const barAverageLine = document.getElementById('barChartAverageLine');
-                const barAverageLabel = document.getElementById('barChartAverage');
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    const hourCell = document.createElement('td');
+                    hourCell.textContent = item.x.toLocaleTimeString([], {hour: '2-digit'});
+                    
+                    const valueCell = document.createElement('td');
+                    valueCell.textContent = item.y.toFixed(2);
+                    
+                    row.appendChild(hourCell);
+                    row.appendChild(valueCell);
+                    tableBody.appendChild(row);
+                });
                 
-                if (show) {
-                    // Position the average line and label
-                    const lineChartArea = lineChart.scales.y;
-                    const barChartArea = barChart.scales.y;
+                document.getElementById('lineChartAverageTable').style.display = 'block';
+                document.getElementById('barChartAverageTable').style.display = 'none';
+            }
+            
+            function updateDailyAverageTable(data, dataType) {
+                const tableBody = document.getElementById('barChartAverageTableBody');
+                tableBody.innerHTML = '';
+                
+                data.forEach(item => {
+                    const row = document.createElement('tr');
                     
-                    const lineY = lineChartArea.getPixelForValue(currentAverage);
-                    const barY = barChartArea.getPixelForValue(currentAverage);
+                    const dayCell = document.createElement('td');
+                    dayCell.textContent = item.x.toLocaleDateString();
                     
-                    lineAverageLine.style.display = 'block';
-                    lineAverageLine.style.top = `${lineY}px`;
-                    lineAverageLabel.style.display = 'block';
-                    lineAverageLabel.textContent = `Avg: ${currentAverage.toFixed(2)}`;
-                    lineAverageLabel.style.top = `${lineY - 15}px`;
+                    const valueCell = document.createElement('td');
+                    valueCell.textContent = item.y.toFixed(2);
                     
-                    barAverageLine.style.display = 'block';
-                    barAverageLine.style.top = `${barY}px`;
-                    barAverageLabel.style.display = 'block';
-                    barAverageLabel.textContent = `Avg: ${currentAverage.toFixed(2)}`;
-                    barAverageLabel.style.top = `${barY - 15}px`;
-                } else {
-                    lineAverageLine.style.display = 'none';
-                    lineAverageLabel.style.display = 'none';
-                    barAverageLine.style.display = 'none';
-                    barAverageLabel.style.display = 'none';
-                }
+                    row.appendChild(dayCell);
+                    row.appendChild(valueCell);
+                    tableBody.appendChild(row);
+                });
+                
+                document.getElementById('barChartAverageTable').style.display = 'block';
+                document.getElementById('lineChartAverageTable').style.display = 'none';
+            }
+            
+            function hideAverageTables() {
+                document.getElementById('lineChartAverageTable').style.display = 'none';
+                document.getElementById('barChartAverageTable').style.display = 'none';
             }
             
             function updateChart(chart, type, data, label) {

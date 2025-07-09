@@ -99,6 +99,7 @@
                 <a href="/dashboard/" class="btn btn-light btn-sm me-2">Dashboard</a>
                 <a href="/charts/" class="btn btn-light btn-sm me-2">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2 active">Raw Data</a>
+                <a href="/events/integrated" class="btn btn-light btn-sm me-2">Event Dashboard</a>
             </div>
         </div>
     </nav>
@@ -187,66 +188,73 @@
             let secondsCounter = (301);
             let table;
             
-            // Initialize DataTable
-            function initializeTable() {
-                table = $('#dataTable').DataTable({
-                    ajax: {
-                        url: '/sensor/data',
-                        dataSrc: ''
+             // Initialize DataTable
+        function initializeTable() {
+            table = $('#dataTable').DataTable({
+                ajax: {
+                    url: '/sensor/data',
+                    dataSrc: ''
+                },
+                columns: [
+                    { data: 'node_id' },
+                    { data: 'loc' },
+                    { 
+                        data: 'temp',
+                        render: function(data) {
+                            return `<span class="badge bg-danger bg-gradient">${data}°C</span>`;
+                        }
                     },
-                    columns: [
-                        { data: 'node_id' },
-                        { data: 'loc' },
-                        { 
-                            data: 'temp',
-                            render: function(data) {
-                                return `<span class="badge bg-danger bg-gradient">${data}°C</span>`;
-                            }
-                        },
-                        { 
-                            data: 'hum',
-                            render: function(data) {
-                                return `<span class="badge bg-info bg-gradient">${data}%</span>`;
-                            }
-                        },
-                        { 
-                            data: 'light',
-                            render: function(data) {
-                                return `<span class="badge bg-warning bg-gradient">${data}%</span>`;
-                            }
-                        },
-                        { 
-                            data: 'snd',
-                            render: function(data) {
-                                return `<span class="badge bg-success bg-gradient">${data}dB</span>`;
-                            }
-                        },
-                        { 
-                            data: 'date_created',
-                            render: function(data) {
+                    { 
+                        data: 'hum',
+                        render: function(data) {
+                            return `<span class="badge bg-info bg-gradient">${data}%</span>`;
+                        }
+                    },
+                    { 
+                        data: 'light',
+                        render: function(data) {
+                            return `<span class="badge bg-warning bg-gradient">${data}%</span>`;
+                        }
+                    },
+                    { 
+                        data: 'snd',
+                        render: function(data) {
+                            return `<span class="badge bg-success bg-gradient">${data}dB</span>`;
+                        }
+                    },
+                    { 
+                        data: 'date_created',
+                        render: function(data, type, row) {
+                            // For display, show formatted date
+                            if (type === 'display') {
                                 return new Date(data).toLocaleString();
                             }
-                        }
-                    ],
-                    responsive: true,
-                    pageLength: 10,
-                    lengthMenu: [5, 10, 25, 50, 100],
-                    dom: '<"top"lf>rt<"bottom"ip><"clear">',
-                    language: {
-                        search: "_INPUT_",
-                        searchPlaceholder: "Search...",
-                        lengthMenu: "Show _MENU_ entries",
-                        info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                        infoEmpty: "Showing 0 to 0 of 0 entries",
-                        paginate: {
-                            first: "First",
-                            last: "Last",
-                            next: "Next",
-                            previous: "Previous"
-                        }
+                            // For sorting and filtering, use the raw UTC timestamp
+                            return data;
+                        },
+                        type: 'date' // Tell DataTables this is a date column for proper sorting
                     }
-                });
-            }
+                ],
+                responsive: true,
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50, 100],
+                dom: '<"top"lf>rt<"bottom"ip><"clear">',
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search...",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    infoEmpty: "Showing 0 to 0 of 0 entries",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Previous"
+                    }
+                },
+                order: [[6, 'desc']] // Default sort by timestamp descending (newest first)
+            });
+        }
             
             // Start auto-refresh
             function startAutoRefresh() {
