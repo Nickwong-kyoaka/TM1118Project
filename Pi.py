@@ -18,6 +18,15 @@ def mqtt_on_message(client, userdata, msg):
 
 def button_callback(channel):
     global current_mode, mode
+    if channel == 21 and mode == "data":
+        curer
+    if mode == "time":
+        time()
+        if mode = "stop"
+    if mode = "stop":
+        stop_watch()
+        mode="init"
+    if 
 
 def mqtt_button_message(client, userdata, msg):
     if 
