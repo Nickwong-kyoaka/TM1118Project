@@ -234,9 +234,9 @@
             let allLocations = [];
 
             // Auto-refresh variables
-            let refreshInterval = 5000; // 5 seconds
+            let refreshInterval = (300000); // 5min
             let refreshTimer;
-            let secondsCounter = 5;
+            let secondsCounter = (300);
             
             // Start auto-refresh
             startAutoRefresh();
@@ -464,20 +464,20 @@
                 const timerElement = document.getElementById('refreshTimer');
                 const timerInterval = setInterval(() => {
                     secondsCounter--;
-                    if(secondsCounter <= 0) secondsCounter = 5;
+                    if(secondsCounter <= 0) secondsCounter = (300);
                     timerElement.textContent = secondsCounter;
                 }, 1000);
 
                 // Refresh data every 5 seconds
                 refreshTimer = setInterval(() => {
                     fetchData();
-                    secondsCounter = 5; // Reset counter after refresh
+                    secondsCounter = (300); // Reset counter after refresh
                 }, refreshInterval);
             }
 
             function resetAutoRefresh() {
                 clearInterval(refreshTimer);
-                secondsCounter = 5;
+                secondsCounter = (5*60);
                 document.getElementById('refreshTimer').textContent = secondsCounter;
                 startAutoRefresh();
             }

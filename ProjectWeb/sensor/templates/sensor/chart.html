@@ -207,9 +207,9 @@
             let dataChart = createChart('dataChart', 'line', 'Temperature');
             
             // Auto-refresh variables
-            let refreshInterval = 30000; // 30 seconds
+            let refreshInterval = 300000; // 30 seconds
             let refreshTimer;
-            let secondsCounter = 30;
+            let secondsCounter = 300;
             
             // Start auto-refresh
             startAutoRefresh();
@@ -422,20 +422,20 @@
                 const timerElement = document.getElementById('refreshTimer');
                 const timerInterval = setInterval(() => {
                     secondsCounter--;
-                    if(secondsCounter <= 0) secondsCounter = 30;
+                    if(secondsCounter <= 0) secondsCounter = 300;
                     timerElement.textContent = secondsCounter;
                 }, 1000);
 
                 // Refresh data every 30 seconds
                 refreshTimer = setInterval(() => {
                     updateChart();
-                    secondsCounter = 30; // Reset counter after refresh
+                    secondsCounter = 300; // Reset counter after refresh
                 }, refreshInterval);
             }
 
             function resetAutoRefresh() {
                 clearInterval(refreshTimer);
-                secondsCounter = 30;
+                secondsCounter = 300;
                 document.getElementById('refreshTimer').textContent = secondsCounter;
                 startAutoRefresh();
             }

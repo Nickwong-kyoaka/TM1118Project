@@ -182,9 +182,9 @@
     <script>
         $(document).ready(function() {
             // Auto-refresh variables
-            let refreshInterval = 5000; // 5 seconds
+            let refreshInterval = (300000); // 5 seconds
             let refreshTimer;
-            let secondsCounter = 5;
+            let secondsCounter = (300);
             let table;
             
             // Initialize DataTable
@@ -254,14 +254,14 @@
                 const timerElement = document.getElementById('refreshTimer');
                 const timerInterval = setInterval(() => {
                     secondsCounter--;
-                    if(secondsCounter <= 0) secondsCounter = 5;
+                    if(secondsCounter <= 0) secondsCounter = (300);
                     timerElement.textContent = secondsCounter;
                 }, 1000);
 
                 // Refresh data every 5 seconds
                 refreshTimer = setInterval(() => {
                     refreshData();
-                    secondsCounter = 5; // Reset counter after refresh
+                    secondsCounter = (300); // Reset counter after refresh
                 }, refreshInterval);
             }
             
@@ -271,10 +271,11 @@
                 table.ajax.url(`/sensor/data?${formData}`).load();
             }
             
+            
             // Reset auto-refresh timer
             function resetAutoRefresh() {
                 clearInterval(refreshTimer);
-                secondsCounter = 5;
+                secondsCounter = 300;
                 document.getElementById('refreshTimer').textContent = secondsCounter;
                 startAutoRefresh();
             }
