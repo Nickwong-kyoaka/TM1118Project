@@ -11,7 +11,6 @@ from .ai_utils import predict_value, predict_for_time_range
 from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .Mqtt_alarm import alarm_mqtt
 
 
 def index(request):
@@ -336,9 +335,13 @@ def set_alarm_thresholds(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
+
+from .Mqtt_alarm import alarm_mqtt
+
 def check_alarms(request):
     thresholds = request.session.get('alarm_thresholds', {})
     active_alarms = []
+    alarm_triggered = False
     
     if any(thresholds.values()):  # If any thresholds are set
         # Get latest data for all sensors
@@ -363,31 +366,32 @@ def check_alarms(request):
                     min_thresh = thresholds.get(sensor, {}).get('min')
                     max_thresh = thresholds.get(sensor, {}).get('max')
                     
-                    if min_thresh is not None and float(sensor_value) < float(min_thresh):
+                    if (min_thresh is not None and float(sensor_value) < float(min_thresh)) or \
+                       (max_thresh is not None and float(sensor_value) > float(max_thresh)):
+                        alarm_triggered = True
                         alarm = {
                             'node_id': node_id,
                             'location': data['loc'],
                             'sensor': sensor,
                             'value': sensor_value,
-                            'threshold': f'< {min_thresh}',
+                            'threshold': f'< {min_thresh}' if min_thresh and float(sensor_value) < float(min_thresh) else f'> {max_thresh}',
                             'timestamp': data['timestamp'].isoformat()
                         }
                         active_alarms.append(alarm)
-                        # Publish to MQTT
-                        alarm_mqtt.publish_alarm(alarm)
-                        
-                    if max_thresh is not None and float(sensor_value) > float(max_thresh):
-                        alarm = {
-                            'node_id': node_id,
-                            'location': data['loc'],
-                            'sensor': sensor,
-                            'value': sensor_value,
-                            'threshold': f'> {max_thresh}',
-                            'timestamp': data['timestamp'].isoformat()
-                        }
-                        active_alarms.append(alarm)
-                        # Publish to MQTT
-                        alarm_mqtt.publish_alarm(alarm)
+        
+        # Publish to MQTT
+        alarm_mqtt.publish_alarm(alarm_triggered)
+        
+        # Add warning message if alarm is triggered
+        if alarm_triggered:
+            if not request.session.get('alarm_warning_shown', False):
+                request.session['alarm_warning_shown'] = True
+                return JsonResponse({
+                    'active_alarms': active_alarms,
+                    'warning': 'Warning: Alarm triggered!'
+                })
+        else:
+            request.session['alarm_warning_shown'] = False
     
     request.session['active_alarms'] = active_alarms
     return JsonResponse({'active_alarms': active_alarms})
@@ -407,7 +411,7 @@ def send_email_notification(request):
             send_mail(
                 subject,
                 message,
-                '@gmail.com',
+                'wongnick.kyoaka@gmail.com',
                 [email],
                 fail_silently=False,
             )

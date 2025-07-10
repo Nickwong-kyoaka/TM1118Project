@@ -441,14 +441,13 @@
 
             function checkForAlarms() {
                 $.get('/check-alarms/', function(response) {
+                    if (response.warning) {
+                        // Show warning message
+                        alert(response.warning);
+                    }
+                    
                     if (response.active_alarms && response.active_alarms.length > 0) {
                         $('#alarmsCard').show();
-                        
-                        // If this is a new alarm, refresh the page to show it
-                        if (!alarmDetected) {
-                            alarmDetected = true;
-                            window.location.reload();
-                        }
                         
                         // Show modal for new alarms
                         const newAlarms = response.active_alarms.filter(alarm => 
@@ -467,7 +466,6 @@
                             $('#alarmModal').modal('show');
                         }
                     } else {
-                        alarmDetected = false;
                         $('#alarmsCard').hide();
                     }
                 });
