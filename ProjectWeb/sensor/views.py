@@ -407,7 +407,7 @@ def send_email_notification(request):
             send_mail(
                 subject,
                 message,
-                'wongnick.kyoaka@gmail.com',
+                '@gmail.com',
                 [email],
                 fail_silently=False,
             )
