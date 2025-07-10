@@ -20,3 +20,6 @@ Topic: IC/C05
 
 {"Stage":"Distance"}
 {"Stage":"RunTime"}
+
+"TeamC05Alarm"
+{"Alarm":"True"}
