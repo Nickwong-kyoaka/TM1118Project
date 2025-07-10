@@ -23,3 +23,9 @@ Topic: IC/C05
 
 "TeamC05Alarm"
 {"Alarm":"True"}
+
+
+pip install pandas joblib numpy
+pip install keras==2.12.0
+pip install tensorflow==2.12.0
+pip install scikit-learn==1.3.2
