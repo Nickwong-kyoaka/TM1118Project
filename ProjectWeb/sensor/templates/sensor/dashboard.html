@@ -139,6 +139,8 @@
                 <a href="/charts/" class="btn btn-light btn-sm me-2">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
                 <a href="/events/integrated" class="btn btn-light btn-sm me-2">Event Dashboard</a>
+                <a href="/predict/" class="btn btn-light btn-sm me-2">AI Prediction</a>
+                <a href="/alarm/" class="btn btn-light btn-sm me-2"><i class="fas fa-bell me-1"></i>Alarms</a>
             </div>
         </div>
     </nav>
@@ -153,7 +155,7 @@
                     <div class="card-body">
                         <form id="filterForm">
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="location" class="form-label">Location</label>
                                     <select class="form-select" id="location" name="location">
                                         <option value="">All Locations</option>
@@ -162,7 +164,16 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
+                                    <label for="node_id" class="form-label">Node ID</label>
+                                    <select class="form-select" id="node_id" name="node_id">
+                                        <option value="">All Nodes</option>
+                                        {% for node_id in node_ids %}
+                                            <option value="{{ node_id }}">{{ node_id }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
                                     <label for="timeRange" class="form-label">Time Range</label>
                                     <select class="form-select" id="timeRange" name="timeRange">
                                         <option value="custom">Custom Range</option>
@@ -173,7 +184,7 @@
                                         <option value="30d">Last 30 Days</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="sensorType" class="form-label">Sensor Values</label>
                                     <select class="form-select" id="sensorType" name="sensorType">
                                         <option value="all">All Values</option>
@@ -324,7 +335,17 @@
             // Location select change handler
             document.getElementById('location').addEventListener('change', function() {
                 const legend = document.getElementById('locationLegend');
-                if (this.value === '') {
+                if (this.value === '' && document.getElementById('node_id').value === '') {
+                    legend.style.display = 'flex';
+                } else {
+                    legend.style.display = 'none';
+                }
+            });
+
+            // Node ID select change handler
+            document.getElementById('node_id').addEventListener('change', function() {
+                const legend = document.getElementById('locationLegend');
+                if (this.value === '' && document.getElementById('location').value === '') {
                     legend.style.display = 'flex';
                 } else {
                     legend.style.display = 'none';
@@ -401,6 +422,10 @@
                                         if (context.dataset.location) {
                                             label += ` (${context.dataset.location})`;
                                         }
+                                        // Show node_id in tooltip if available
+                                        if (context.dataset.nodeId) {
+                                            label += ` [Node ${context.dataset.nodeId}]`;
+                                        }
                                         return label;
                                     }
                                 }
@@ -435,20 +460,21 @@
                 fetch(`/sensor/data?${params}`)
                     .then(response => response.json())
                     .then(data => {
-                        // Group data by location if "All Locations" is selected
                         const selectedLocation = document.getElementById('location').value;
+                        const selectedNodeId = document.getElementById('node_id').value;
                         
-                        if (selectedLocation === '') {
-                            // Show all locations
+                        if (selectedLocation === '' && selectedNodeId === '') {
+                            // Show all locations and nodes
                             locationData = {};
-                            allLocations = [...new Set(data.map(item => item.loc))];
+                            allLocations = [...new Set(data.map(item => `${item.loc} (Node ${item.node_id})`))];
                             
-                            // Group data by location
+                            // Group data by location and node_id
                             data.forEach(item => {
-                                if (!locationData[item.loc]) {
-                                    locationData[item.loc] = [];
+                                const locationKey = `${item.loc} (Node ${item.node_id})`;
+                                if (!locationData[locationKey]) {
+                                    locationData[locationKey] = [];
                                 }
-                                locationData[item.loc].push(item);
+                                locationData[locationKey].push(item);
                             });
                             
                             // Update charts with multiple datasets
@@ -460,7 +486,7 @@
                             // Update location legend
                             updateLocationLegend();
                         } else {
-                            // Show single location
+                            // Show filtered data
                             updateChart(tempChart, data, 'temp', 'Temperature (°C)');
                             updateChart(humChart, data, 'hum', 'Humidity (%)');
                             updateChart(lightChart, data, 'light', 'Light Level');
@@ -483,8 +509,10 @@
                     tension: 0.3,
                     data: data.map(item => ({
                         x: item.date_created,
-                        y: item[field]
-                    }))
+                        y: item[field],
+                        node_id: item.node_id
+                    })),
+                    nodeId: data.length > 0 ? data[0].node_id : null
                 }];
                 chart.update();
             }
@@ -494,9 +522,11 @@
                 
                 allLocations.forEach((loc, index) => {
                     if (locationData[loc]) {
+                        const nodeId = locationData[loc][0]?.node_id;
                         chart.data.datasets.push({
                             label: `${labelPrefix} - ${loc}`,
                             location: loc,
+                            nodeId: nodeId,
                             borderColor: getLocationColor(loc),
                             backgroundColor: getLocationColor(loc, 0.2),
                             borderWidth: 2,
@@ -508,7 +538,8 @@
                             tension: 0.3,
                             data: locationData[loc].map(item => ({
                                 x: item.date_created,
-                                y: item[field]
+                                y: item[field],
+                                node_id: item.node_id
                             }))
                         });
                     }

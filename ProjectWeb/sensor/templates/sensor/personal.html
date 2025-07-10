@@ -4,6 +4,7 @@
     <title>Personal Sensor Data</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #6a11cb;
@@ -86,6 +87,118 @@
             border: none;
             padding: 10px 20px;
         }
+        
+        .alert-card {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+            color: white;
+        }
+        
+        .history-table {
+            margin-top: 2rem;
+        }
+        
+        .timer-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        
+        .email-form {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+        }
+        
+        .test-alarm-btn {
+            margin-top: 1rem;
+            background: linear-gradient(135deg, #ff5e62 0%, #ff9966 100%);
+            border: none;
+            color: white;
+        }
+        
+        .countdown-container {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 2rem;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+        
+        .countdown-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .countdown-timer {
+            font-size: 3rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .alarm-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff0000 0%, #ff6600 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-size: 3rem;
+            text-align: center;
+            animation: pulse 1s infinite alternate;
+            display: none;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+        
+        .alarm-message {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            animation: flash 2s infinite;
+        }
+        
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .alarm-close-btn {
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            background: white;
+            color: #ff0000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .alarm-close-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .settings-form {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+        }
     </style>
 </head>
 <body>
@@ -96,6 +209,40 @@
             </div>
             <div class="card-body">
                 {% if personal_data %}
+                <!-- Alarm Display (hidden by default) -->
+                <div class="alarm-display" id="alarmDisplay">
+                    <div class="alarm-message">
+                        Health Life, NO Working AND Studying! GO MOVE!!!
+                    </div>
+                    <button class="alarm-close-btn" onclick="closeAlarm()">
+                        Close Alarm
+                    </button>
+                </div>
+                
+                {% if show_alert %}
+                <div class="sensor-card alert-card text-center">
+                    <div class="sensor-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="sensor-value">
+                        Warning: No movement for {{ inactive_time }}
+                    </div>
+                    <div class="sensor-label">
+                        Please stand up and move around!
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Countdown Timer -->
+                <div class="countdown-container">
+                    <div class="countdown-title">
+                        Time Until Next Movement Alert
+                    </div>
+                    <div class="countdown-timer" id="countdownTimer">
+                        --:--:--
+                    </div>
+                </div>
+                
                 <div class="row">
                     <div class="col-md-4">
                         <div class="sensor-card temp-card text-center">
@@ -106,7 +253,7 @@
                                 {{ personal_data.p_temp }}°C
                             </div>
                             <div class="sensor-label">
-                                Temperature
+                                Body Temperature
                             </div>
                         </div>
                     </div>
@@ -120,7 +267,7 @@
                                 {{ personal_data.p_hum }}%
                             </div>
                             <div class="sensor-label">
-                                Humidity
+                                Body Sweat
                             </div>
                         </div>
                     </div>
@@ -132,19 +279,87 @@
                             </div>
                             <div class="sensor-value">
                                 {{ personal_data.move }}
+                                {% if is_inactive %}
+                                <div class="timer-display" id="inactiveTimer">
+                                    Inactive for: {{ inactive_time }}
+                                </div>
+                                {% endif %}
                             </div>
                             <div class="sensor-label">
-                                Movement
+                                Movement Status
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="last-updated">
-                    <p>Last updated: {{ personal_data.id }}</p>
+                <!-- Settings Form -->
+                <div class="settings-form">
+                    <h4 class="text-center mb-3"><i class="fas fa-cog me-2"></i>Alert Settings</h4>
+                    <div class="form-group mb-3">
+                        <label for="alertTime">Alert After (minutes)</label>
+                        <input type="number" class="form-control" id="alertTime" min="1" value="90" placeholder="Enter time in minutes">
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="saveSettings()">
+                        <i class="fas fa-save me-2"></i>Save Settings
+                    </button>
                 </div>
+                
+                <!-- Email Notification Form -->
+                <div class="email-form">
+                    <h4 class="text-center mb-3"><i class="fas fa-envelope me-2"></i>Email Notification</h4>
+                    <div class="form-group mb-3">
+                        <label for="userEmail">Your Email Address</label>
+                        <input type="email" class="form-control" id="userEmail" placeholder="Enter your email">
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="setupEmailNotification()">
+                        <i class="fas fa-bell me-2"></i>Enable Email Notifications
+                    </button>
+                    <button class="btn test-alarm-btn w-100 mt-2" onclick="testAlarm()">
+                        <i class="fas fa-bell me-2"></i>Test Alarm Now
+                    </button>
+                </div>
+                
+                <div class="last-updated">
+                    <p>Last updated: {{ personal_data.created_time }}</p>
+                </div>
+                
+                <!-- History Toggle Button -->
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#historyCollapse" aria-expanded="false" 
+                            aria-controls="historyCollapse">
+                        <i class="fas fa-history me-2"></i>Toggle History
+                    </button>
+                </div>
+                
+                <!-- History Table -->
+                <div class="collapse history-table" id="historyCollapse">
+                    <table class="table table-striped mt-3">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Body Temp (°C)</th>
+                                <th>Body Sweat (%)</th>
+                                <th>Movement</th>
+                                <th>Start Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in history %}
+                            <tr>
+                                <td>{{ record.created_time }}</td>
+                                <td>{{ record.p_temp }}</td>
+                                <td>{{ record.p_hum }}</td>
+                                <td>{{ record.move }}</td>
+                                <td>{{ record.start }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
                 {% else %}
-                <div class="alert alert-warning text-center">
+                <div class="alert alert-warning text-center
                     No personal sensor data available.
                 </div>
                 {% endif %}
@@ -158,11 +373,220 @@
         </div>
     </div>
 
-    <!-- Auto-refresh every 5 seconds -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script>
-        setTimeout(function(){
-            window.location.reload();
-        }, 25000);
+        // Global variables
+        let alertThreshold = 90; // Default 90 minutes
+        let alarmTriggered = false;
+        let countdownInterval = null;
+        let lastActiveTime = "{{ personal_data.created_time|default:0 }}";
+
+        // MQTT Client Setup
+        const mqttClient = new Paho.MQTT.Client("ia.ic.polyu.edu.hk", 1883, "webClient_" + parseInt(Math.random() * 100, 10));
+        
+        mqttClient.onConnectionLost = function(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                console.log("Connection lost: " + responseObject.errorMessage);
+                connectToMqtt(); // Attempt to reconnect
+            }
+        };
+
+        mqttClient.onMessageArrived = function(message) {
+            console.log("Message arrived: " + message.payloadString);
+            try {
+                const data = JSON.parse(message.payloadString);
+                if (data.MOVED === "True") {
+                    lastActiveTime = new Date().toISOString();
+                    alarmTriggered = false;
+                    clearInterval(countdownInterval);
+                    startCountdown();
+                }
+            } catch (e) {
+                console.error("Error parsing MQTT message:", e);
+            }
+        };
+
+        function onConnect() {
+            console.log("MQTT Connected");
+            mqttClient.subscribe("C05", 1);
+        }
+
+        function connectToMqtt() {
+            mqttClient.connect({
+                onSuccess: onConnect,
+                useSSL: false,
+                timeout: 3,
+                onFailure: function(error) {
+                    console.log("MQTT connection failed: ", error);
+                    setTimeout(connectToMqtt, 5000); // Retry after 5 seconds
+                }
+            });
+        }
+
+        // Connect to MQTT when page loads
+        connectToMqtt();
+
+        // Initialize settings from localStorage
+        function loadSettings() {
+            const savedAlertTime = localStorage.getItem('alertTime');
+            if (savedAlertTime) {
+                alertThreshold = parseInt(savedAlertTime);
+                document.getElementById('alertTime').value = alertThreshold;
+            }
+            
+            const savedEmail = local translating...
+            Storage.getItem('userEmail');
+            if (savedEmail) {
+                document.getElementById('userEmail').value = savedEmail;
+            }
+        }
+
+        // Save settings to localStorage
+        function saveSettings() {
+            const newAlertTime = document.getElementById('alertTime').value;
+            if (newAlertTime && parseInt(newAlertTime) > 0) {
+                alertThreshold = parseInt(newAlertTime);
+                localStorage.setItem('alertTime', alertThreshold);
+                alert(`Settings saved! Alerts will trigger after ${alertThreshold} minutes of inactivity.`);
+                clearInterval(countdownInterval);
+                startCountdown();
+            } else {
+                alert('Please enter a valid time (greater than 0 minutes)');
+            }
+        }
+
+        // Timer update function
+        function updateInactiveTimer() {
+            const inactiveSeconds = {{ inactive_seconds|default:0 }} + Math.floor((Date.now() - new Date(lastActiveTime).getTime()) / 1000);
+            const timerDisplay = document.getElementById('inactiveTimer');
+            if (timerDisplay) {
+                const hours = Math.floor(inactiveSeconds / 3600);
+                const minutes = Math.floor((inactiveSeconds % 3600) / 60);
+                const seconds = Math.floor(inactiveSeconds % 60);
+                timerDisplay.textContent = `Inactive for: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Countdown timer function
+        function startCountdown() {
+            const countdownElement = document.getElementById('countdownTimer');
+            if (!countdownElement) return;
+
+            countdownInterval = setInterval(() => {
+                const now = new Date();
+                const lastActive = new Date(lastActiveTime);
+                const inactiveSeconds = Math.floor((now - lastActive) / 1000);
+                const thresholdSeconds = alertThreshold * 60;
+                const remainingSeconds = Math.max(0, thresholdSeconds - inactiveSeconds);
+
+                if (remainingSeconds <= 0) {
+                    countdownElement.textContent = '00:00:00';
+                    if (!alarmTriggered) {
+                        triggerAlarm();
+                        alarmTriggered = true;
+                    }
+                    return;
+                }
+
+                const hours = Math.floor(remainingSeconds / 3600);
+                const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                const seconds = remainingSeconds % 60;
+                countdownElement.textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Alarm function
+        function triggerAlarm() {
+            // Show visual alarm
+            const alarmDisplay = document.getElementById('alarmDisplay');
+            alarmDisplay.style.display = 'flex';
+
+            // Send email if configured
+            const email = document.getElementById('userEmail').value;
+            if (email) {
+                sendEmailNotification(email, "Movement Alert", 
+                    `You have been inactive for more than ${alertThreshold} minutes. Time to move!`);
+            }
+
+            // Publish MQTT message
+            const message = new Paho.MQTT.Message(JSON.stringify({"Alarm": "True"}));
+            message.destinationName = "TeamC05Alarm";
+            mqttClient.send(message);
+        }
+
+        // Close alarm function
+        function closeAlarm() {
+            document.getElementById('alarmDisplay').style.display = 'none';
+            alarmTriggered = false;
+            clearInterval(countdownInterval);
+            startCountdown();
+        }
+
+        // Test alarm function
+        function testAlarm() {
+            triggerAlarm();
+        }
+
+        // Email notification setup
+        function setupEmailNotification() {
+            const email = document.getElementById('userEmail').value;
+            if (email) {
+                localStorage.setItem('userEmail', email);
+                alert(`Email notifications enabled for ${email}. You'll be notified after ${alertThreshold} minutes of inactivity.`);
+            } else {
+                alert("Please enter a valid email address.");
+            }
+        }
+
+        // Function to send email
+        function sendEmailNotification(email, subject, body) {
+            console.log(`Sending email to ${email} with subject: ${subject} and body: ${body}`);
+            fetch('/send-email/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    email: email,
+                    subject: subject,
+                    message: body
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Email sent:', data);
+            })
+            .catch(error => {
+                console.error('Error sending email:', error);
+            });
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            updateInactiveTimer();
+            setInterval(updateInactiveTimer, 1000);
+            startCountdown();
+        });
     </script>
 </body>
 </html>

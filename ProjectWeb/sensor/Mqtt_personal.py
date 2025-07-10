@@ -5,7 +5,7 @@ import json
 mqtt_broker = "ia.ic.polyu.edu.hk" # Broker
 mqtt_port = 1883 # Default
 mqtt_qos = 1 # Quality of Service = 1
-mqtt_topic = "IC/CCC555"
+mqtt_topic = "C057"
 
 def mqtt_on_message(client, userdata, msg):
 # Do something

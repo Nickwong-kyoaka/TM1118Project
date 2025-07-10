@@ -100,6 +100,8 @@
                 <a href="/charts/" class="btn btn-light btn-sm me-2">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2 active">Raw Data</a>
                 <a href="/events/integrated" class="btn btn-light btn-sm me-2">Event Dashboard</a>
+                <a href="/predict/" class="btn btn-light btn-sm me-2">AI Prediction</a>
+                <a href="/alarm/" class="btn btn-light btn-sm me-2"><i class="fas fa-bell me-1"></i>Alarms</a>
             </div>
         </div>
     </nav>
@@ -114,7 +116,7 @@
                     <div class="card-body">
                         <form id="filterForm">
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="location" class="form-label">Location</label>
                                     <select class="form-select" id="location" name="location">
                                         <option value="">All Locations</option>
@@ -123,11 +125,20 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
+                                    <label for="node_id" class="form-label">Node ID</label>
+                                    <select class="form-select" id="node_id" name="node_id">
+                                        <option value="">All Nodes</option>
+                                        {% for node_id in node_ids %}
+                                            <option value="{{ node_id }}">{{ node_id }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
                                     <label for="startDate" class="form-label">Start Date</label>
                                     <input type="datetime-local" class="form-control" id="startDate" name="startDate">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="endDate" class="form-label">End Date</label>
                                     <input type="datetime-local" class="form-control" id="endDate" name="endDate">
                                 </div>
@@ -188,73 +199,73 @@
             let secondsCounter = (301);
             let table;
             
-             // Initialize DataTable
-        function initializeTable() {
-            table = $('#dataTable').DataTable({
-                ajax: {
-                    url: '/sensor/data',
-                    dataSrc: ''
-                },
-                columns: [
-                    { data: 'node_id' },
-                    { data: 'loc' },
-                    { 
-                        data: 'temp',
-                        render: function(data) {
-                            return `<span class="badge bg-danger bg-gradient">${data}°C</span>`;
-                        }
+            // Initialize DataTable
+            function initializeTable() {
+                table = $('#dataTable').DataTable({
+                    ajax: {
+                        url: '/sensor/data',
+                        dataSrc: ''
                     },
-                    { 
-                        data: 'hum',
-                        render: function(data) {
-                            return `<span class="badge bg-info bg-gradient">${data}%</span>`;
-                        }
-                    },
-                    { 
-                        data: 'light',
-                        render: function(data) {
-                            return `<span class="badge bg-warning bg-gradient">${data}%</span>`;
-                        }
-                    },
-                    { 
-                        data: 'snd',
-                        render: function(data) {
-                            return `<span class="badge bg-success bg-gradient">${data}dB</span>`;
-                        }
-                    },
-                    { 
-                        data: 'date_created',
-                        render: function(data, type, row) {
-                            // For display, show formatted date
-                            if (type === 'display') {
-                                return new Date(data).toLocaleString();
+                    columns: [
+                        { data: 'node_id' },
+                        { data: 'loc' },
+                        { 
+                            data: 'temp',
+                            render: function(data) {
+                                return `<span class="badge bg-danger bg-gradient">${data}°C</span>`;
                             }
-                            // For sorting and filtering, use the raw UTC timestamp
-                            return data;
                         },
-                        type: 'date' // Tell DataTables this is a date column for proper sorting
-                    }
-                ],
-                responsive: true,
-                pageLength: 10,
-                lengthMenu: [5, 10, 25, 50, 100],
-                dom: '<"top"lf>rt<"bottom"ip><"clear">',
-                language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search...",
-                    lengthMenu: "Show _MENU_ entries",
-                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                    infoEmpty: "Showing 0 to 0 of 0 entries",
-                    paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Previous"
-                    }
-                },
-                order: [[6, 'desc']] // Default sort by timestamp descending (newest first)
-            });
-        }
+                        { 
+                            data: 'hum',
+                            render: function(data) {
+                                return `<span class="badge bg-info bg-gradient">${data}%</span>`;
+                            }
+                        },
+                        { 
+                            data: 'light',
+                            render: function(data) {
+                                return `<span class="badge bg-warning bg-gradient">${data}%</span>`;
+                            }
+                        },
+                        { 
+                            data: 'snd',
+                            render: function(data) {
+                                return `<span class="badge bg-success bg-gradient">${data}dB</span>`;
+                            }
+                        },
+                        { 
+                            data: 'date_created',
+                            render: function(data, type, row) {
+                                // For display, show formatted date
+                                if (type === 'display') {
+                                    return new Date(data).toLocaleString();
+                                }
+                                // For sorting and filtering, use the raw UTC timestamp
+                                return data;
+                            },
+                            type: 'date' // Tell DataTables this is a date column for proper sorting
+                        }
+                    ],
+                    responsive: true,
+                    pageLength: 10,
+                    lengthMenu: [5, 10, 25, 50, 100],
+                    dom: '<"top"lf>rt<"bottom"ip><"clear">',
+                    language: {
+                        search: "_INPUT_",
+                        searchPlaceholder: "Search...",
+                        lengthMenu: "Show _MENU_ entries",
+                        info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                        infoEmpty: "Showing 0 to 0 of 0 entries",
+                        paginate: {
+                            first: "First",
+                            last: "Last",
+                            next: "Next",
+                            previous: "Previous"
+                        }
+                    },
+                    order: [[6, 'desc']] // Default sort by timestamp descending (newest first)
+                });
+            }
             
             // Start auto-refresh
             function startAutoRefresh() {
@@ -280,7 +291,6 @@
                 table.ajax.url(`/sensor/data?${formData}`).load();
             }
             
-            
             // Reset auto-refresh timer
             function resetAutoRefresh() {
                 clearInterval(refreshTimer);
@@ -292,6 +302,17 @@
             // Initialize table and start auto-refresh
             initializeTable();
             startAutoRefresh();
+
+            // Ensure only one filter (location or node_id) is applied
+            $('#location, #node_id').change(function() {
+                if ($(this).val()) {
+                    if ($(this).attr('id') === 'location') {
+                        $('#node_id').val('');
+                    } else {
+                        $('#location').val('');
+                    }
+                }
+            });
 
             $('#filterForm').on('submit', function(e) {
                 e.preventDefault();

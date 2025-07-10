@@ -10,9 +10,7 @@
         :root {
             --primary-color: #6a11cb;
             --secondary-color: #2575fc;
-            --accent-color: #ff5e62;
             --light-bg: #f8f9fa;
-            --dark-bg: #343a40;
         }
         
         body {
@@ -29,12 +27,7 @@
             border: none;
             border-radius: 15px;
             box-shadow: 0 6px 10px rgba(0,0,0,0.08);
-            transition: transform 0.3s;
             background: white;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
         }
         
         .card-header {
@@ -53,28 +46,6 @@
         .btn-primary {
             background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
             border: none;
-        }
-        
-        .refresh-badge {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        .nav-buttons {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
-            display: flex;
-            gap: 10px;
         }
         
         .stats-container {
@@ -110,6 +81,26 @@
         .average-table th {
             background-color: #f2f2f2;
         }
+        
+        .data-table-container {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .summary-card {
+            margin-bottom: 20px;
+        }
+        
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -124,6 +115,8 @@
                 <a href="/charts/" class="btn btn-light btn-sm me-2 active">Detail boards</a>
                 <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
                 <a href="/events/integrated" class="btn btn-light btn-sm me-2">Event Dashboard</a>
+                <a href="/predict/" class="btn btn-light btn-sm me-2">AI Prediction</a>
+                <a href="/alarm/" class="btn btn-light btn-sm me-2 active"><i class="fas fa-bell me-1"></i>Alarms</a>
             </div>
         </div>
     </nav>
@@ -141,42 +134,43 @@
                                 <div class="col-md-3">
                                     <label for="location" class="form-label">Location</label>
                                     <select class="form-select" id="location" name="location">
+                                        <option value="">All Locations</option>
                                         {% for loc in locations %}
                                             <option value="{{ loc }}">{{ loc }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
                                 <div class="col-md-3">
+                                    <label for="node_id" class="form-label">Node ID</label>
+                                    <select class="form-select" id="node_id" name="node_id">
+                                        <option value="">All Nodes</option>
+                                        {% for node_id in node_ids %}
+                                            <option value="{{ node_id }}">{{ node_id }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
                                     <label for="dataType" class="form-label">Data Type</label>
                                     <select class="form-select" id="dataType" name="dataType">
-                                        <option value="temp">Temperature</option>
-                                        <option value="hum">Humidity</option>
-                                        <option value="light">Light</option>
-                                        <option value="snd">Sound</option>
+                                        <option value="temp">Temperature (°C)</option>
+                                        <option value="hum">Humidity (%)</option>
+                                        <option value="light">Light Level</option>
+                                        <option value="snd">Sound Level (dB)</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="timeRange" class="form-label">Time Range</label>
                                     <select class="form-select" id="timeRange" name="timeRange">
-                                        <option value="1">Last Hour</option>
-                                        <option value="6">Last 6 Hours</option>
-                                        <option value="24" selected>Last 24 Hours</option>
-                                        <option value="168">Last Week</option>
-                                        <option value="custom">Custom</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="statType" class="form-label">Display Mode</label>
-                                    <select class="form-select" id="statType" name="statType">
-                                        <option value="raw">Raw Data</option>
-                                        <option value="avg">Hourly Average</option>
-                                        <option value="daily">Daily Average</option>
-                                        <option value="max">Max Values</option>
-                                        <option value="min">Min Values</option>
+                                        <option value="1h">Last 1 Hour</option>
+                                        <option value="6h">Last 6 Hours</option>
+                                        <option value="24h">Last 24 Hours</option>
+                                        <option value="7d">Last 7 Days</option>
+                                        <option value="30d">Last 30 Days</option>
+                                        <option value="custom">Custom Range</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="row mt-3" id="customDateRange" style="display: none;">
+                            <div class="row mt-3">
                                 <div class="col-md-6">
                                     <label for="startDate" class="form-label">Start Date</label>
                                     <input type="datetime-local" class="form-control" id="startDate" name="startDate">
@@ -197,50 +191,93 @@
             </div>
         </div>
 
+        <!-- Summary Statistics Row -->
         <div class="row mb-4">
-            <div class="col-md-6">
+            <div class="col-md-3">
+                <div class="card summary-card">
+                    <div class="card-body text-center">
+                        <div class="summary-value" id="summary-avg">--</div>
+                        <div class="summary-label">Average</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card">
+                    <div class="card-body text-center">
+                        <div class="summary-value" id="summary-max">--</div>
+                        <div class="summary-label">Maximum</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card">
+                    <div class="card-body text-center">
+                        <div class="summary-value" id="summary-min">--</div>
+                        <div class="summary-label">Minimum</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card">
+                    <div class="card-body text-center">
+                        <div class="summary-value" id="summary-count">--</div>
+                        <div class="summary-label">Data Points</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-gradient-success text-white">
-                        <i class="fas fa-chart-line me-2"></i>Line Chart
+                        <i class="fas fa-chart-line me-2"></i>Sensor Data
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
                             <canvas id="lineChart"></canvas>
                         </div>
-                        <div id="lineChartAverageTable" style="display: none;">
-                            <h5 class="mt-3">Hourly Averages</h5>
-                            <table class="average-table">
-                                <thead>
-                                    <tr>
-                                        <th>Hour</th>
-                                        <th>Average Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="lineChartAverageTableBody"></tbody>
-                            </table>
-                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-gradient-info text-white">
-                        <i class="fas fa-chart-bar me-2"></i>Bar Chart
+                        <i class="fas fa-chart-bar me-2"></i>Period Averages
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
-                            <canvas id="barChart"></canvas>
+                            <canvas id="periodAvgChart"></canvas>
                         </div>
-                        <div id="barChartAverageTable" style="display: none;">
-                            <h5 class="mt-3">Daily Averages</h5>
-                            <table class="average-table">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <i class="fas fa-table me-2"></i>Sensor Statistics
+                    </div>
+                    <div class="card-body">
+                        <div class="data-table-container">
+                            <table class="table table-striped table-hover average-table">
                                 <thead>
                                     <tr>
-                                        <th>Day</th>
-                                        <th>Average Value</th>
+                                        <th>Sensor Type</th>
+                                        <th>Average</th>
+                                        <th>Maximum</th>
+                                        <th>Minimum</th>
+                                        <th>Data Points</th>
                                     </tr>
                                 </thead>
-                                <tbody id="barChartAverageTableBody"></tbody>
+                                <tbody id="statsTableBody">
+                                    <!-- Statistics will be inserted here -->
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -248,52 +285,30 @@
             </div>
         </div>
 
-        <div class="row">
+        <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-gradient-warning text-white">
-                        <i class="fas fa-calculator me-2"></i>Statistics Summary
+                    <div class="card-header bg-gradient-primary text-white">
+                        <i class="fas fa-table me-2"></i>Raw Sensor Data
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="stats-container">
-                                    <h5>Current Range Statistics</h5>
-                                    <div class="stat-item">
-                                        <span>Average:</span>
-                                        <span class="stat-value" id="stat-avg">--</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Maximum:</span>
-                                        <span class="stat-value" id="stat-max">--</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Minimum:</span>
-                                        <span class="stat-value" id="stat-min">--</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="stats-container">
-                                    <h5>Data Points</h5>
-                                    <div class="stat-item">
-                                        <span>Total Data Points:</span>
-                                        <span class="stat-value" id="stat-count">--</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>First Timestamp:</span>
-                                        <span class="stat-value" id="stat-first">--</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Last Timestamp:</span>
-                                        <span class="stat-value" id="stat-last">--</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span>Time Span:</span>
-                                        <span class="stat-value" id="stat-span">--</span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="data-table-container">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Location</th>
+                                        <th>Node ID</th>
+                                        <th>Temperature (°C)</th>
+                                        <th>Humidity (%)</th>
+                                        <th>Light Level</th>
+                                        <th>Sound (dB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dataTableBody">
+                                    <!-- Data will be inserted here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -301,94 +316,94 @@
         </div>
     </div>
 
-    <div class="nav-buttons">
-        <a href="/dashboard/" class="btn btn-primary">
-            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-        </a>
-        <a href="/data/" class="btn btn-secondary">
-            <i class="fas fa-table me-2"></i>Data Table
-        </a>
-    </div>
-
-    <div class="refresh-badge">
-        <i class="fas fa-sync-alt me-2"></i>Auto-refresh: <span id="refreshTimer">30</span>s
-    </div>
-
-    <!-- Font Awesome for icons -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Color palette for charts
-            const chartColors = [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                '#FF9F40', '#8AC24A', '#FF5722', '#607D8B', '#E91E63'
-            ];
+            const chartColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'];
             
             // Initialize charts
-            let lineChart = createChart('lineChart', 'line');
-            let barChart = createChart('barChart', 'bar');
-            
-            // Auto-refresh variables
-            let refreshInterval = 300000; // 5 min
-            let refreshTimer;
-            let secondsCounter = 301;
-            
-            // Current data cache
-            let currentData = [];
-            let currentAverage = 0;
-            
-            // Start auto-refresh
-            startAutoRefresh();
+            let lineChart = createLineChart('lineChart');
+            let periodAvgChart = createBarChart('periodAvgChart');
+
+            // Set default date range to current local time
+            const now = new Date();
+            const formatLocalDateTime = (date) => {
+                const pad = (num) => String(num).padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+            };
+            document.getElementById('startDate').value = formatLocalDateTime(new Date(now.getTime() - 24 * 60 * 60 * 1000)); // Default to 24 hours ago
+            document.getElementById('endDate').value = formatLocalDateTime(now);
 
             // Form submission handler
             document.getElementById('chartConfigForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 updateCharts();
-                resetAutoRefresh();
             });
 
-            // Time range change handler
+            // Location and Node ID select change handlers
+            document.getElementById('location').addEventListener('change', function() {
+                if (this.value) {
+                    document.getElementById('node_id').value = '';
+                }
+            });
+
+            document.getElementById('node_id').addEventListener('change', function() {
+                if (this.value) {
+                    document.getElementById('location').value = '';
+                }
+            });
+
+            // Time range select change handler
             document.getElementById('timeRange').addEventListener('change', function() {
-                const customRange = document.getElementById('customDateRange');
-                if (this.value === 'custom') {
-                    customRange.style.display = 'flex';
-                    // Set default dates for custom range
-                    const now = new Date();
-                    const oneWeekAgo = new Date();
-                    oneWeekAgo.setDate(now.getDate() - 7);
-                    
-                    document.getElementById('startDate').value = oneWeekAgo.toISOString().slice(0, 16);
-                    document.getElementById('endDate').value = now.toISOString().slice(0, 16);
-                } else {
-                    customRange.style.display = 'none';
+                if (this.value !== 'custom') {
+                    updateTimeRange(this.value);
                 }
             });
 
             // Initial chart load
             updateCharts();
 
-            function createChart(canvasId, type) {
+            function createLineChart(canvasId) {
                 const ctx = document.getElementById(canvasId).getContext('2d');
                 return new Chart(ctx, {
-                    type: type,
+                    type: 'line',
                     data: {
                         labels: [],
                         datasets: [{
                             label: '',
                             data: [],
-                            backgroundColor: type === 'bar' ? chartColors[1] : chartColors[0] + '40',
                             borderColor: chartColors[0],
+                            backgroundColor: chartColors[0] + '40',
                             borderWidth: 2,
-                            fill: type === 'line',
-                            tension: type === 'line' ? 0.1 : 0
+                            fill: true,
+                            tension: 0.1
                         }]
                     },
-                    options: getChartOptions(type)
+                    options: getChartOptions('Value over Time')
                 });
             }
 
-            function getChartOptions(type) {
+            function createBarChart(canvasId) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Period Average',
+                            data: [],
+                            backgroundColor: chartColors[1] + '80',
+                            borderColor: chartColors[1],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: getChartOptions('Period Average')
+                });
+            }
+
+            function getChartOptions(title) {
                 return {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -403,14 +418,16 @@
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toFixed(2);
-                                    }
-                                    return label;
+                                    if (label) label += ': ';
+                                    return label + context.parsed.y.toFixed(2);
                                 }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: title,
+                            font: {
+                                size: 16
                             }
                         }
                     },
@@ -418,10 +435,10 @@
                         x: {
                             type: 'time',
                             time: {
-                                tooltipFormat: 'MMM D, h:mm A',
-                                unit: 'hour',
+                                tooltipFormat: 'MMM D, YYYY h:mm a',
+                                unit: 'day',
                                 displayFormats: {
-                                    hour: 'MMM D, hA'
+                                    day: 'MMM D'
                                 }
                             },
                             grid: {
@@ -450,20 +467,10 @@
                 const formData = new FormData(document.getElementById('chartConfigForm'));
                 const params = new URLSearchParams(formData).toString();
                 const dataType = document.getElementById('dataType').value;
-                const timeRange = document.getElementById('timeRange').value;
-                const statType = document.getElementById('statType').value;
-
-                // Calculate date range if not custom
-                let startDate, endDate;
-                if (timeRange !== 'custom') {
-                    const hours = parseInt(timeRange);
-                    endDate = new Date();
-                    startDate = new Date();
-                    startDate.setHours(endDate.getHours() - hours);
-                } else {
-                    startDate = new Date(document.getElementById('startDate').value);
-                    endDate = new Date(document.getElementById('endDate').value);
-                }
+                const startDate = new Date(document.getElementById('startDate').value);
+                const endDate = new Date(document.getElementById('endDate').value);
+                const location = document.getElementById('location').value;
+                const node_id = document.getElementById('node_id').value;
 
                 fetch(`/sensor/data?${params}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
                     .then(response => response.json())
@@ -472,267 +479,184 @@
                             console.error('No data received');
                             return;
                         }
-                        
-                        currentData = data;
-                        const location = document.getElementById('location').value;
-                        const dataLabel = `${getDataTypeLabel(dataType)}${location ? ` (${location})` : ''}`;
-                        
-                        // Calculate the overall average
-                        const values = data.map(item => item[dataType]);
-                        currentAverage = values.reduce((a, b) => a + b, 0) / values.length;
-                        
-                        // Process data based on stat type
-                        let processedData;
-                        switch(statType) {
-                            case 'avg':
-                                processedData = calculateHourlyAverages(data, dataType);
-                                updateHourlyAverageTable(processedData, dataType);
-                                break;
-                            case 'daily':
-                                processedData = calculateDailyAverages(data, dataType);
-                                updateDailyAverageTable(processedData, dataType);
-                                break;
-                            case 'max':
-                                processedData = calculateMaxValues(data, dataType);
-                                hideAverageTables();
-                                break;
-                            case 'min':
-                                processedData = calculateMinValues(data, dataType);
-                                hideAverageTables();
-                                break;
-                            default:
-                                processedData = data.map(item => ({
-                                    x: new Date(item.date_created),
-                                    y: item[dataType]
-                                }));
-                                hideAverageTables();
-                        }
-                        
+
+                        const dataLabel = `${getDataTypeLabel(dataType)}${location ? ` (${location})` : node_id ? ` (Node ${node_id})` : ''}`;
+                        const processedData = data.map(item => ({
+                            x: new Date(item.date_created),
+                            y: item[dataType]
+                        }));
+
                         // Update line chart
-                        updateChart(lineChart, 'line', processedData, dataLabel);
+                        updateChart(lineChart, processedData, dataLabel);
+
+                        // Calculate and update statistics
+                        const stats = calculateStatistics(data);
+                        updateStatistics(stats, dataType);
                         
-                        // Update bar chart
-                        updateChart(barChart, 'bar', processedData, dataLabel);
+                        // Update data table
+                        updateDataTable(data);
                         
-                        // Update statistics
-                        updateStatistics(data, dataType);
+                        // Update statistics table
+                        updateStatsTable(stats);
+                        
+                        // Update period averages chart
+                        updatePeriodAverages(data, dataType, stats, location || node_id);
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
                     });
             }
-            
-            function updateHourlyAverageTable(data, dataType) {
-                const tableBody = document.getElementById('lineChartAverageTableBody');
-                tableBody.innerHTML = '';
-                
-                data.forEach(item => {
-                    const row = document.createElement('tr');
-                    
-                    const hourCell = document.createElement('td');
-                    hourCell.textContent = item.x.toLocaleTimeString([], {hour: '2-digit'});
-                    
-                    const valueCell = document.createElement('td');
-                    valueCell.textContent = item.y.toFixed(2);
-                    
-                    row.appendChild(hourCell);
-                    row.appendChild(valueCell);
-                    tableBody.appendChild(row);
-                });
-                
-                document.getElementById('lineChartAverageTable').style.display = 'block';
-                document.getElementById('barChartAverageTable').style.display = 'none';
-            }
-            
-            function updateDailyAverageTable(data, dataType) {
-                const tableBody = document.getElementById('barChartAverageTableBody');
-                tableBody.innerHTML = '';
-                
-                data.forEach(item => {
-                    const row = document.createElement('tr');
-                    
-                    const dayCell = document.createElement('td');
-                    dayCell.textContent = item.x.toLocaleDateString();
-                    
-                    const valueCell = document.createElement('td');
-                    valueCell.textContent = item.y.toFixed(2);
-                    
-                    row.appendChild(dayCell);
-                    row.appendChild(valueCell);
-                    tableBody.appendChild(row);
-                });
-                
-                document.getElementById('barChartAverageTable').style.display = 'block';
-                document.getElementById('lineChartAverageTable').style.display = 'none';
-            }
-            
-            function hideAverageTables() {
-                document.getElementById('lineChartAverageTable').style.display = 'none';
-                document.getElementById('barChartAverageTable').style.display = 'none';
-            }
-            
-            function updateChart(chart, type, data, label) {
+
+            function updateChart(chart, data, label) {
                 chart.data.labels = data.map(item => item.x);
-                chart.data.datasets = [{
-                    label: label,
-                    data: data.map(item => item.y),
-                    backgroundColor: type === 'bar' ? chartColors[1] : chartColors[0] + '40',
-                    borderColor: chartColors[0],
-                    borderWidth: 2,
-                    fill: type === 'line',
-                    tension: type === 'line' ? 0.1 : 0
-                }];
-                
-                // Adjust x-axis scale based on time range
-                const timeRange = document.getElementById('timeRange').value;
-                let timeUnit = 'hour';
-                let displayFormat = 'MMM D, hA';
-                
-                if (timeRange === '168' || document.getElementById('statType').value === 'daily') {
-                    timeUnit = 'day';
-                    displayFormat = 'MMM D';
-                }
-                
-                chart.options.scales.x.time = {
-                    tooltipFormat: 'MMM D, h:mm A',
-                    unit: timeUnit,
-                    displayFormats: {
-                        [timeUnit]: displayFormat
-                    }
-                };
-                
+                chart.data.datasets[0].label = label;
+                chart.data.datasets[0].data = data.map(item => item.y);
                 chart.update();
             }
-            
-            function calculateHourlyAverages(data, dataType) {
-                const hourlyData = {};
+
+            function calculateStatistics(data) {
+                if (!data || data.length === 0) return {};
                 
+                const stats = {
+                    temp: { values: [], avg: 0, max: 0, min: 0, count: 0 },
+                    hum: { values: [], avg: 0, max: 0, min: 0, count: 0 },
+                    light: { values: [], avg: 0, max: 0, min: 0, count: 0 },
+                    snd: { values: [], avg: 0, max: 0, min: 0, count: 0 },
+                    totalCount: data.length
+                };
+                
+                // Collect all values for each data type
                 data.forEach(item => {
-                    const date = new Date(item.date_created);
-                    const hourKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
-                    
-                    if (!hourlyData[hourKey]) {
-                        hourlyData[hourKey] = {
-                            sum: 0,
-                            count: 0,
-                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
-                        };
-                    }
-                    
-                    hourlyData[hourKey].sum += item[dataType];
-                    hourlyData[hourKey].count++;
+                    if (item.temp !== undefined) stats.temp.values.push(Number(item.temp));
+                    if (item.hum !== undefined) stats.hum.values.push(Number(item.hum));
+                    if (item.light !== undefined) stats.light.values.push(Number(item.light));
+                    if (item.snd !== undefined) stats.snd.values.push(Number(item.snd));
                 });
                 
-                return Object.values(hourlyData).map(hour => ({
-                    x: hour.timestamp,
-                    y: hour.sum / hour.count
-                }));
-            }
-            
-            function calculateDailyAverages(data, dataType) {
-                const dailyData = {};
-                
-                data.forEach(item => {
-                    const date = new Date(item.date_created);
-                    const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-                    
-                    if (!dailyData[dayKey]) {
-                        dailyData[dayKey] = {
-                            sum: 0,
-                            count: 0,
-                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate())
-                        };
-                    }
-                    
-                    dailyData[dayKey].sum += item[dataType];
-                    dailyData[dayKey].count++;
-                });
-                
-                return Object.values(dailyData).map(day => ({
-                    x: day.timestamp,
-                    y: day.sum / day.count
-                }));
-            }
-            
-            function calculateMaxValues(data, dataType) {
-                const hourlyMax = {};
-                
-                data.forEach(item => {
-                    const date = new Date(item.date_created);
-                    const hourKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
-                    
-                    if (!hourlyMax[hourKey] || item[dataType] > hourlyMax[hourKey].max) {
-                        hourlyMax[hourKey] = {
-                            max: item[dataType],
-                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
-                        };
+                // Calculate stats for each data type
+                ['temp', 'hum', 'light', 'snd'].forEach(type => {
+                    if (stats[type].values.length > 0) {
+                        stats[type].count = stats[type].values.length;
+                        stats[type].avg = stats[type].values.reduce((a, b) => a + b, 0) / stats[type].count;
+                        stats[type].max = Math.max(...stats[type].values);
+                        stats[type].min = Math.min(...stats[type].values);
                     }
                 });
                 
-                return Object.values(hourlyMax).map(hour => ({
-                    x: hour.timestamp,
-                    y: hour.max
-                }));
+                return stats;
             }
-            
-            function calculateMinValues(data, dataType) {
-                const hourlyMin = {};
+
+            function updateStatistics(stats, dataType) {
+                if (!stats || !stats[dataType]) return;
                 
-                data.forEach(item => {
-                    const date = new Date(item.date_created);
-                    const hourKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
+                // Update summary cards
+                document.getElementById('summary-avg').textContent = stats[dataType].avg.toFixed(2);
+                document.getElementById('summary-max').textContent = stats[dataType].max.toFixed(2);
+                document.getElementById('summary-min').textContent = stats[dataType].min.toFixed(2);
+                document.getElementById('summary-count').textContent = stats[dataType].count;
+            }
+
+            function updateDataTable(data) {
+                const tableBody = document.getElementById('dataTableBody');
+                tableBody.innerHTML = '';
+                
+                const sortedData = [...data].sort((a, b) => 
+                    new Date(b.date_created) - new Date(a.date_created)
+                );
+                
+                sortedData.forEach(item => {
+                    const row = document.createElement('tr');
                     
-                    if (!hourlyMin[hourKey] || item[dataType] < hourlyMin[hourKey].min) {
-                        hourlyMin[hourKey] = {
-                            min: item[dataType],
-                            timestamp: new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours())
-                        };
-                    }
+                    const timestamp = new Date(item.date_created);
+                    row.innerHTML = `
+                        <td>${timestamp.toLocaleString()}</td>
+                        <td>${item.loc || '--'}</td>
+                        <td>${item.node_id || '--'}</td>
+                        <td>${item.temp ? Number(item.temp).toFixed(2) : '--'}</td>
+                        <td>${item.hum ? Number(item.hum).toFixed(2) : '--'}</td>
+                        <td>${item.light ? Number(item.light).toFixed(2) : '--'}</td>
+                        <td>${item.snd ? Number(item.snd).toFixed(2) : '--'}</td>
+                    `;
+                    tableBody.appendChild(row);
                 });
-                
-                return Object.values(hourlyMin).map(hour => ({
-                    x: hour.timestamp,
-                    y: hour.min
-                }));
             }
-            
-            function updateStatistics(data, dataType) {
+
+            function updateStatsTable(stats) {
+                const tableBody = document.getElementById('statsTableBody');
+                tableBody.innerHTML = '';
+                
+                const sensorTypes = [
+                    { key: 'temp', label: 'Temperature (°C)' },
+                    { key: 'hum', label: 'Humidity (%)' },
+                    { key: 'light', label: 'Light Level' },
+                    { key: 'snd', label: 'Sound Level (dB)' }
+                ];
+                
+                sensorTypes.forEach(sensor => {
+                    const row = document.createElement('tr');
+                    const statsData = stats[sensor.key];
+                    
+                    row.innerHTML = `
+                        <td>${sensor.label}</td>
+                        <td>${statsData.count > 0 ? statsData.avg.toFixed(2) : '--'}</td>
+                        <td>${statsData.count > 0 ? statsData.max.toFixed(2) : '--'}</td>
+                        <td>${statsData.count > 0 ? statsData.min.toFixed(2) : '--'}</td>
+                        <td>${statsData.count}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function updatePeriodAverages(data, dataType, stats, filterValue) {
                 if (!data || data.length === 0) return;
                 
-                const values = data.map(item => item[dataType]);
-                const dates = data.map(item => new Date(item.date_created));
+                const startDate = new Date(document.getElementById('startDate').value);
+                const endDate = new Date(document.getElementById('endDate').value);
                 
-                // Calculate statistics
-                const sum = values.reduce((a, b) => a + b, 0);
-                const avg = sum / values.length;
-                const max = Math.max(...values);
-                const min = Math.min(...values);
+                // Prepare chart data
+                const chartData = [{
+                    x: startDate,
+                    y: stats[dataType].avg
+                }];
                 
-                // Time calculations
-                const firstDate = dates[0];
-                const lastDate = dates[dates.length - 1];
-                const timeSpan = formatTimeSpan(lastDate - firstDate);
+                const labels = [startDate];
                 
-                // Update DOM elements
-                document.getElementById('stat-avg').textContent = avg.toFixed(2);
-                document.getElementById('stat-max').textContent = max.toFixed(2);
-                document.getElementById('stat-min').textContent = min.toFixed(2);
-                document.getElementById('stat-count').textContent = values.length;
-                document.getElementById('stat-first').textContent = firstDate.toLocaleString();
-                document.getElementById('stat-last').textContent = lastDate.toLocaleString();
-                document.getElementById('stat-span').textContent = timeSpan;
+                // Update period averages chart
+                periodAvgChart.data.labels = labels;
+                periodAvgChart.data.datasets[0].label = `Period Average ${getDataTypeLabel(dataType)}${filterValue ? ` (${filterValue})` : ''}`;
+                periodAvgChart.data.datasets[0].data = chartData;
+                periodAvgChart.update();
             }
-            
-            function formatTimeSpan(ms) {
-                const seconds = Math.floor(ms / 1000);
-                const minutes = Math.floor(seconds / 60);
-                const hours = Math.floor(minutes / 60);
-                const days = Math.floor(hours / 24);
+
+            function updateTimeRange(range) {
+                const now = new Date();
+                const formatLocalDateTime = (date) => {
+                    const pad = (num) => String(num).padStart(2, '0');
+                    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+                };
                 
-                if (days > 0) return `${days}d ${hours % 24}h`;
-                if (hours > 0) return `${hours}h ${minutes % 60}m`;
-                if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-                return `${seconds}s`;
+                let startDate = new Date();
+                
+                switch(range) {
+                    case '1h':
+                        startDate.setHours(now.getHours() - 1);
+                        break;
+                    case '6h':
+                        startDate.setHours(now.getHours() - 6);
+                        break;
+                    case '24h':
+                        startDate.setDate(now.getDate() - 1);
+                        break;
+                    case '7d':
+                        startDate.setDate(now.getDate() - 7);
+                        break;
+                    case '30d':
+                        startDate.setDate(now.getDate() - 30);
+                        break;
+                }
+                
+                document.getElementById('startDate').value = formatLocalDateTime(startDate);
+                document.getElementById('endDate').value = formatLocalDateTime(now);
             }
 
             function getDataTypeLabel(type) {
@@ -743,30 +667,6 @@
                     'snd': 'Sound Level (dB)'
                 };
                 return labels[type] || type;
-            }
-
-            function startAutoRefresh() {
-                document.getElementById('refreshTimer').textContent = secondsCounter;
-                // Update timer display every second
-                const timerElement = document.getElementById('refreshTimer');
-                const timerInterval = setInterval(() => {
-                    secondsCounter--;
-                    if(secondsCounter <= 0) secondsCounter = 300;
-                    timerElement.textContent = secondsCounter;
-                }, 1000);
-
-                // Refresh data every 5min
-                refreshTimer = setInterval(() => {
-                    updateCharts();
-                    secondsCounter = 300; // Reset counter after refresh
-                }, refreshInterval);
-            }
-
-            function resetAutoRefresh() {
-                clearInterval(refreshTimer);
-                secondsCounter = 300;
-                document.getElementById('refreshTimer').textContent = secondsCounter;
-                startAutoRefresh();
             }
         });
     </script>

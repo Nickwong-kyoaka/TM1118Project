@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
@@ -13,160 +15,129 @@
             --secondary-color: #2575fc;
             --accent-color: #ff5e62;
             --light-bg: #f8f9fa;
-            --dark-bg: #343a40;
         }
-        
+
         body {
-            background: linear-gradient(135deg, var(--light-bg) 0%, #e9ecef 100%);
+            background: linear-gradient(135deg, var(--light-bg), #e9ecef);
             min-height: 100vh;
+            font-family: 'Arial', sans-serif;
         }
-        
+
         .navbar-custom {
             background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
+
         .card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 6px 10px rgba(0,0,0,0.08);
-            transition: transform 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             background: white;
+            transition: transform 0.2s;
         }
-        
+
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
         }
-        
+
         .card-header {
             background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
             color: white;
-            border-radius: 15px 15px 0 0 !important;
-            font-weight: bold;
+            border-radius: 15px 15px 0 0;
+            font-weight: 600;
         }
-        
+
         .btn-primary {
             background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
             border: none;
         }
-        
-        .btn-secondary {
-            background: linear-gradient(to right, #8e2de2, #4a00e0);
-            border: none;
+
+        .btn-outline-secondary {
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
         }
-        
-        .btn-danger {
-            background: linear-gradient(to right, var(--accent-color), #ff9966);
-            border: none;
-        }
-        
-        .filter-card {
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(10px);
-        }
-        
+
         .badge-event {
-            background: linear-gradient(to right, #6a11cb, #2575fc);
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
             color: white;
         }
-        
+
         .chart-container {
-            height: 400px;
+            height: 350px;
+            position: relative;
         }
-        
+
         .event-details {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            background: rgba(255,255,255,0.9);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: rgba(255,255,255,0.95);
             padding: 15px;
             border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
         }
-        
-        .event-detail-item {
-            flex: 1;
-            min-width: 200px;
-        }
-        
+
         .event-detail-label {
-            font-weight: bold;
+            font-weight: 600;
             color: var(--secondary-color);
-            margin-bottom: 5px;
+            font-size: 0.9rem;
         }
-        
+
         .event-detail-value {
-            font-size: 1.1rem;
+            font-size: 1rem;
+            color: #343a40;
         }
-        
-        .full-width-chart {
-            width: 100% !important;
-            max-width: 100% !important;
-            flex: 0 0 100% !important;
-        }
-        
+
         .sensor-checkboxes {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-        }
-        
-        .checkbox-group input {
-            margin-right: 5px;
-        }
-        
-        .average-table {
-            margin-bottom: 20px;
-        }
-        
-        .average-table th {
-            background-color: #f8f9fa;
-        }
-        
-        .average-value {
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
+
         .stats-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        
+
         .stat-card {
-            flex: 1;
-            min-width: 200px;
-            padding: 15px;
+            padding: 12px;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
         }
-        
+
         .stat-label {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #6c757d;
-            margin-bottom: 5px;
         }
-        
+
         .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 1.3rem;
+            font-weight: 600;
             color: var(--primary-color);
         }
-        
+
         .stat-unit {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #6c757d;
-            margin-left: 3px;
+        }
+
+        .average-table {
+            margin-bottom: 15px;
+        }
+
+        .average-table th {
+            background: var(--light-bg);
+            font-weight: 600;
+        }
+
+        .average-value {
+            font-weight: 600;
+            color: var(--primary-color);
         }
     </style>
 </head>
@@ -174,14 +145,14 @@
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4">
         <div class="container">
             <a class="navbar-brand" href="#">Event Dashboard</a>
-            <div class="d-flex">
-                <a href="/" class="btn btn-light btn-sm me-2">
-                    <i class="fas fa-home me-1"></i> Home
-                </a>
-                <a href="/dashboard/" class="btn btn-light btn-sm me-2">Dashboard</a>
-                <a href="/charts/" class="btn btn-light btn-sm me-2">Detail boards</a>
-                <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
-                <a href="/events/integrated" class="btn btn-light btn-sm me-2 active">Event Dashboard</a>
+            <div class="d-flex gap-2">
+                <a href="/" class="btn btn-light btn-sm"><i class="fas fa-home me-1"></i>Home</a>
+                <a href="/dashboard/" class="btn btn-light btn-sm">Dashboard</a>
+                <a href="/charts/" class="btn btn-light btn-sm">Detail boards</a>
+                <a href="/data/" class="btn btn-light btn-sm">Raw Data</a>
+                <a href="/events/integrated" class="btn btn-light btn-sm active">Event Dashboard</a>
+                <a href="/predict/" class="btn btn-light btn-sm">AI Prediction</a>
+                <a href="/alarm/" class="btn btn-light btn-sm me-2"><i class="fas fa-bell me-1"></i>Alarms</a>
             </div>
         </div>
     </nav>
@@ -189,13 +160,11 @@
     <div class="container">
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card filter-card">
-                    <div class="card-header bg-gradient-primary text-white">
-                        <i class="fas fa-filter me-2"></i>Event Filters
-                    </div>
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-filter me-2"></i>Event Filters</div>
                     <div class="card-body">
                         <form id="eventFilterForm">
-                            <div class="row">
+                            <div class="row g-3">
                                 <div class="col-md-3">
                                     <label for="venue" class="form-label">Venue</label>
                                     <select class="form-select" id="venue" name="venue">
@@ -217,19 +186,17 @@
                                 <div class="col-md-3">
                                     <label for="startDate" class="form-label">Start Date</label>
                                     <input type="datetime-local" class="form-control" id="startDate" name="startDate">
+                                    <small class="text-muted">Events that overlap with this range will be shown</small>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="endDate" class="form-label">End Date</label>
                                     <input type="datetime-local" class="form-control" id="endDate" name="endDate">
+                                    <small class="text-muted">Events that overlap with this range will be shown</small>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-end mt-3">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-filter me-2"></i>Apply Filters
-                                </button>
-                                <button type="reset" class="btn btn-outline-secondary ms-2">
-                                    <i class="fas fa-undo me-2"></i>Reset
-                                </button>
+                            <div class="d-flex justify-content-end mt-3 gap-2">
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Apply</button>
+                                <button type="reset" class="btn btn-outline-secondary"><i class="fas fa-undo me-2"></i>Reset</button>
                             </div>
                         </form>
                     </div>
@@ -238,14 +205,12 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-gradient-info text-white">
-                        <i class="fas fa-calendar-alt me-2"></i>Event Data
-                    </div>
+                    <div class="card-header"><i class="fas fa-calendar-alt me-2"></i>Events</div>
                     <div class="card-body">
-                        <table id="eventTable" class="table table-striped table-hover" style="width:100%">
-                            <thead class="table-dark">
+                        <table id="eventTable" class="table table-striped table-hover w-100">
+                            <thead>
                                 <tr>
                                     <th>Venue</th>
                                     <th>Start Time</th>
@@ -256,9 +221,7 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <!-- Data will be loaded here -->
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
@@ -268,204 +231,118 @@
         <div class="row mt-4" id="eventDashboardSection" style="display: none;">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-gradient-success text-white">
-                        <i class="fas fa-chart-line me-2"></i>Event Sensor Dashboard
-                    </div>
+                    <div class="card-header"><i class="fas fa-chart-line me-2"></i>Event Sensor Dashboard</div>
                     <div class="card-body">
-                        <div id="eventDetails">
-                            <h4 class="mb-3">Event Details</h4>
-                            <div class="event-details">
-                                <div class="event-detail-item">
-                                    <div class="event-detail-label">Venue</div>
-                                    <div class="event-detail-value" id="detailVenue">-</div>
-                                </div>
-                                <div class="event-detail-item">
-                                    <div class="event-detail-label">Event Type</div>
-                                    <div class="event-detail-value" id="detailEventType">-</div>
-                                </div>
-                                <div class="event-detail-item">
-                                    <div class="event-detail-label">Instructor</div>
-                                    <div class="event-detail-value" id="detailInstructor">-</div>
-                                </div>
-                                <div class="event-detail-item">
-                                    <div class="event-detail-label">Start Time</div>
-                                    <div class="event-detail-value" id="detailStartTime">-</div>
-                                </div>
-                                <div class="event-detail-item">
-                                    <div class="event-detail-label">End Time</div>
-                                    <div class="event-detail-value" id="detailEndTime">-</div>
-                                </div>
-                                <div class="event-detail-item">
-                                    <div class="event-detail-label">Duration</div>
-                                    <div class="event-detail-value" id="detailDuration">-</div>
-                                </div>
+                        <h5 class="mb-3">Event Details (Sensored Data in time range of event)</h5>
+                        <div class="event-details">
+                            <div>
+                                <div class="event-detail-label">Venue</div>
+                                <div class="event-detail-value" id="detailVenue">-</div>
+                            </div>
+                            <div>
+                                <div class="event-detail-label">Event Type</div>
+                                <div class="event-detail-value" id="detailEventType">-</div>
+                            </div>
+                            <div>
+                                <div class="event-detail-label">Instructor</div>
+                                <div class="event-detail-value" id="detailInstructor">-</div>
+                            </div>
+                            <div>
+                                <div class="event-detail-label">Start Time</div>
+                                <div class="event-detail-value" id="detailStartTime">-</div>
+                            </div>
+                            <div>
+                                <div class="event-detail-label">End Time</div>
+                                <div class="event-detail-value" id="detailEndTime">-</div>
+                            </div>
+                            <div>
+                                <div class="event-detail-label">Duration</div>
+                                <div class="event-detail-value" id="detailDuration">-</div>
                             </div>
                         </div>
 
                         <div class="sensor-checkboxes">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="showTemp" name="showTemp" checked>
-                                <label for="showTemp">Temperature</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showTemp" checked>
+                                <label class="form-check-label" for="showTemp">Temperature</label>
                             </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="showHum" name="showHum" checked>
-                                <label for="showHum">Humidity</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showHum" checked>
+                                <label class="form-check-label" for="showHum">Humidity</label>
                             </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="showLight" name="showLight" checked>
-                                <label for="showLight">Light</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showLight" checked>
+                                <label class="form-check-label" for="showLight">Light</label>
                             </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="showSound" name="showSound" checked>
-                                <label for="showSound">Sound</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showSound" checked>
+                                <label class="form-check-label" for="showSound">Sound</label>
                             </div>
                         </div>
 
-                        <!-- Average Stats Cards -->
                         <div class="stats-container">
                             <div class="stat-card">
-                                <div class="stat-label">Average Temperature</div>
-                                <div class="stat-value" id="avgTemp">-<span class="stat-unit">°C</span></div>
+                                <div class="stat-label">Avg Temperature</div>
+                                <div class="stat-value" id="avgTemp">-- <span class="stat-unit">°C</span></div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-label">Average Humidity</div>
-                                <div class="stat-value" id="avgHum">-<span class="stat-unit">%</span></div>
+                                <div class="stat-label">Avg Humidity</div>
+                                <div class="stat-value" id="avgHum">-- <span class="stat-unit">%</span></div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-label">Average Light</div>
-                                <div class="stat-value" id="avgLight">-<span class="stat-unit">lux</span></div>
+                                <div class="stat-label">Avg Light</div>
+                                <div class="stat-value" id="avgLight">-- <span class="stat-unit">%</span></div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-label">Average Sound</div>
-                                <div class="stat-value" id="avgSound">-<span class="stat-unit">dB</span></div>
+                                <div class="stat-label">Avg Sound</div>
+                                <div class="stat-value" id="avgSound">-- <span class="stat-unit">dB</span></div>
                             </div>
                         </div>
 
-                        <!-- Detailed Average Tables -->
-                        <div class="row">
-                            <div class="col-md-6">
+                        <div class="row mb-4">
+                            <div class="col-12">
                                 <div class="card average-table">
-                                    <div class="card-header bg-gradient-danger text-white">
-                                        <i class="fas fa-temperature-high me-2"></i>Temperature Statistics
-                                    </div>
+                                    <div class="card-header"><i class="fas fa-table me-2"></i>Sensor Statistics</div>
                                     <div class="card-body">
                                         <table class="table table-bordered">
                                             <thead>
                                                 <tr>
-                                                    <th>Statistic</th>
-                                                    <th>Value</th>
+                                                    <th>Sensor</th>
+                                                    <th>Average</th>
+                                                    <th>Minimum</th>
+                                                    <th>Maximum</th>
+                                                    <th>Data Points</th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody id="statsTableBody">
                                                 <tr>
-                                                    <td>Average</td>
-                                                    <td class="average-value" id="tempAvg">- °C</td>
+                                                    <td>Temperature (°C)</td>
+                                                    <td class="average-value" id="tempAvg">--</td>
+                                                    <td id="tempMin">--</td>
+                                                    <td id="tempMax">--</td>
+                                                    <td id="tempCount">--</td>
                                                 </tr>
                                                 <tr>
-                                                    <td>Minimum</td>
-                                                    <td id="tempMin">- °C</td>
+                                                    <td>Humidity (%)</td>
+                                                    <td class="average-value" id="humAvg">--</td>
+                                                    <td id="humMin">--</td>
+                                                    <td id="humMax">--</td>
+                                                    <td id="humCount">--</td>
                                                 </tr>
                                                 <tr>
-                                                    <td>Maximum</td>
-                                                    <td id="tempMax">- °C</td>
-                                                </tr>
-                                                
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card average-table">
-                                    <div class="card-header bg-gradient-info text-white">
-                                        <i class="fas fa-tint me-2"></i>Humidity Statistics
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Statistic</th>
-                                                    <th>Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>Average</td>
-                                                    <td class="average-value" id="humAvg">- %</td>
+                                                    <td>Light Level (%)</td>
+                                                    <td class="average-value" id="lightAvg">--</td>
+                                                    <td id="lightMin">--</td>
+                                                    <td id="lightMax">--</td>
+                                                    <td id="lightCount">--</td>
                                                 </tr>
                                                 <tr>
-                                                    <td>Minimum</td>
-                                                    <td id="humMin">- %</td>
+                                                    <td>Sound Level (dB)</td>
+                                                    <td class="average-value" id="soundAvg">--</td>
+                                                    <td id="soundMin">--</td>
+                                                    <td id="soundMax">--</td>
+                                                    <td id="soundCount">--</td>
                                                 </tr>
-                                                <tr>
-                                                    <td>Maximum</td>
-                                                    <td id="humMax">- %</td>
-                                                </tr>
-                                                
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card average-table">
-                                    <div class="card-header bg-gradient-warning text-white">
-                                        <i class="fas fa-sun me-2"></i>Light Statistics
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Statistic</th>
-                                                    <th>Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>Average</td>
-                                                    <td class="average-value" id="lightAvg">- lux</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Minimum</td>
-                                                    <td id="lightMin">- lux</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Maximum</td>
-                                                    <td id="lightMax">- lux</td>
-                                                </tr>
-                                                
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card average-table">
-                                    <div class="card-header bg-gradient-success text-white">
-                                        <i class="fas fa-volume-up me-2"></i>Sound Statistics
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Statistic</th>
-                                                    <th>Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>Average</td>
-                                                    <td class="average-value" id="soundAvg">- dB</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Minimum</td>
-                                                    <td id="soundMin">- dB</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Maximum</td>
-                                                    <td id="soundMax">- dB</td>
-                                                </tr>
-                                                
                                             </tbody>
                                         </table>
                                     </div>
@@ -473,45 +350,36 @@
                             </div>
                         </div>
 
-                        <!-- Charts Section -->
                         <div class="row" id="chartsRow">
-                            <div class="col-lg-6 chart-col" id="tempCol">
-                                <div class="card mb-4" id="tempCard">
-                                    <div class="card-header bg-gradient-danger text-white">
-                                        <i class="fas fa-temperature-high me-2"></i>Temperature Over Time
-                                    </div>
+                            <div class="col-md-6 chart-col" id="tempCol">
+                                <div class="card mb-3">
+                                    <div class="card-header"><i class="fas fa-temperature-high me-2"></i>Temperature</div>
                                     <div class="card-body chart-container">
-                                        <canvas id="tempChart" height="400"></canvas>
+                                        <canvas id="tempChart"></canvas>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-6 chart-col" id="humCol">
-                                <div class="card mb-4" id="humCard">
-                                    <div class="card-header bg-gradient-info text-white">
-                                        <i class="fas fa-tint me-2"></i>Humidity Over Time
-                                    </div>
+                            <div class="col-md-6 chart-col" id="humCol">
+                                <div class="card mb-3">
+                                    <div class="card-header"><i class="fas fa-tint me-2"></i>Humidity</div>
                                     <div class="card-body chart-container">
-                                        <canvas id="humChart" height="400"></canvas>
+                                        <canvas id="humChart"></canvas>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-6 chart-col" id="lightCol">
-                                <div class="card mb-4" id="lightCard">
-                                    <div class="card-header bg-gradient-warning text-white">
-                                        <i class="fas fa-sun me-2"></i>Light Levels Over Time
-                                    </div>
+                            <div class="col-md-6 chart-col" id="lightCol">
+                                <div class="card mb-3">
+                                    <div class="card-header"><i class="fas fa-sun me-2"></i>Light</div>
                                     <div class="card-body chart-container">
-                                        <canvas id="lightChart" height="400"></canvas>
+                                        <canvas id="lightChart"></canvas>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-6 chart-col" id="sndCol">
-                                <div class="card mb-4" id="sndCard">
-                                    <div class="card-header bg-gradient-success text-white">
-                                        <i class="fas fa-volume-up me-2"></i>Sound Levels Over Time
-                                    </div>
+                            <div class="col-md-6 chart-col" id="sndCol">
+                                <div class="card mb-3">
+                                    <div class="card-header"><i class="fas fa-volume-up me-2"></i>Sound</div>
                                     <div class="card-body chart-container">
-                                        <canvas id="sndChart" height="400"></canvas>
+                                        <canvas id="sndChart"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -527,387 +395,212 @@
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    
+
     <script>
         $(document).ready(function() {
-            // Initialize charts
-            const tempChart = createChart('tempChart', 'Temperature (°C)');
-            const humChart = createChart('humChart', 'Humidity (%)');
-            const lightChart = createChart('lightChart', 'Light Level (lux)');
-            const sndChart = createChart('sndChart', 'Sound Level (dB)');
-            
-            // Store current event data
+            const charts = {
+                temp: createChart('tempChart', 'Temperature (°C)', '#FF6384'),
+                hum: createChart('humChart', 'Humidity (%)', '#36A2EB'),
+                light: createChart('lightChart', 'Light Level (%)', '#FFCE56'),
+                snd: createChart('sndChart', 'Sound Level (dB)', '#4BC0C0')
+            };
             let currentEvent = null;
             let currentSensorData = [];
-            
-            // Initialize DataTable for events
-            let eventTable = $('#eventTable').DataTable({
-                ajax: {
-                    url: '/event/data/',
-                    dataSrc: ''
-                },
+
+            const eventTable = $('#eventTable').DataTable({
+                ajax: { url: '/event/data/', dataSrc: '' },
                 columns: [
                     { 
                         data: 'venue',
-                        render: function(data) {
-                            return `<span class="badge badge-event">${data}</span>`;
-                        }
+                        render: data => `<span class="badge badge-event">${data}</span>`
                     },
                     { 
                         data: 'dateWtime_start',
-                        render: function(data) {
-                            return new Date(data).toLocaleString();
-                        },
+                        render: data => new Date(data).toLocaleString(),
                         type: 'date'
                     },
                     { 
                         data: 'dateWtime_end',
-                        render: function(data) {
-                            return new Date(data).toLocaleString();
-                        },
+                        render: data => new Date(data).toLocaleString(),
                         type: 'date'
                     },
                     { 
                         data: 'event_occured',
-                        render: function(data) {
+                        render: data => {
                             const colors = {
-                                'lecture': 'bg-primary',
-                                'lab': 'bg-success',
-                                'meeting': 'bg-warning',
-                                'other': 'bg-secondary'
+                                lecture: 'bg-primary',
+                                lab: 'bg-success',
+                                meeting: 'bg-warning',
+                                other: 'bg-secondary'
                             };
-                            const color = colors[data.toLowerCase()] || 'bg-info';
-                            return `<span class="badge ${color}">${data}</span>`;
+                            return `<span class="badge ${colors[data.toLowerCase()] || 'bg-info'}">${data}</span>`;
                         }
                     },
                     { data: 'instructor' },
                     { 
                         data: null,
-                        render: function(data) {
-                            const start = new Date(data.dateWtime_start);
-                            const end = new Date(data.dateWtime_end);
-                            const durationMs = end - start;
-                            if (durationMs < 0) {
-                                return '<span class="text-danger">Invalid time range</span>';
-                            }
-            
-                            const durationHours = durationMs / (1000 * 60 * 60); // in hours
-                            return `${durationHours.toFixed(1)} hours`;
+                        render: data => {
+                            const durationMs = new Date(data.dateWtime_end) - new Date(data.dateWtime_start);
+                            return durationMs < 0 ? '<span class="text-danger">Invalid</span>' : 
+                                   `${(durationMs / (1000 * 60 * 60)).toFixed(1)} hours`;
                         }
                     },
                     {
                         data: null,
-                        render: function(data) {
-                            return `<button class="btn btn-sm btn-primary view-event-btn" data-id="${data.id}">View Data</button>`;
-                        },
+                        render: data => `<button class="btn btn-sm btn-primary view-event-btn" data-id="${data.id}">View</button>`,
                         orderable: false
                     }
                 ],
                 responsive: true,
                 pageLength: 10,
-                lengthMenu: [5, 10, 25, 50, 100],
-                order: [[1, 'desc']], // Default sort by start time descending
-                dom: '<"top"lf>rt<"bottom"ip><"clear">',
+                lengthMenu: [5, 10, 25, 50],
+                order: [[1, 'desc']],
+                dom: '<"d-flex justify-content-between align-items-center mb-3"lf>t<"d-flex justify-content-between"ip>',
                 language: {
-                    search: "_INPUT_",
+                    search: "",
                     searchPlaceholder: "Search events...",
                     lengthMenu: "Show _MENU_ events",
-                    info: "Showing _START_ to _END_ of _TOTAL_ events",
-                    infoEmpty: "No events found",
-                    paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Previous"
-                    }
+                    info: "Showing _START_ to _END_ of _TOTAL_ events"
                 }
             });
-            
-            // Apply filters when form is submitted
+
             $('#eventFilterForm').on('submit', function(e) {
                 e.preventDefault();
-                const formData = $(this).serialize();
-                eventTable.ajax.url(`/event/data/?${formData}`).load();
+                eventTable.ajax.url(`/event/data/?${$(this).serialize()}`).load();
             });
 
-            // Reset filters
-            $('button[type="reset"]').on('click', function() {
-                setTimeout(() => {
-                    eventTable.ajax.url('/event/data/').load();
-                }, 100);
+            $('#eventFilterForm').on('reset', function() {
+                setTimeout(() => eventTable.ajax.url('/event/data/').load(), 100);
             });
-            
-            // Handle view event button click
+
             $('#eventTable').on('click', '.view-event-btn', function() {
-                const eventId = $(this).data('id');
                 const eventData = eventTable.row($(this).parents('tr')).data();
-                
-                // Set current event
                 currentEvent = eventData;
-                
-                // Update event details display
                 updateEventDetails(eventData);
-                
-                // Show the dashboard section
+                fetchEventSensorData(eventData.id);
                 $('#eventDashboardSection').show();
-                
-                // Load sensor data for this event
-                fetchEventSensorData(eventId);
-                
-                // Scroll to dashboard section
-                $('html, body').animate({
-                    scrollTop: $('#eventDashboardSection').offset().top - 20
-                }, 500);
+                $('html, body').animate({ scrollTop: $('#eventDashboardSection').offset().top - 20 }, 500);
             });
-            
-            // Sensor checkbox change handlers
-            $('#showTemp').on('change', function() {
-                updateChartVisibility('temp', this.checked);
+
+            ['showTemp', 'showHum', 'showLight', 'showSound'].forEach(id => {
+                $(`#${id}`).on('change', function() {
+                    updateChartVisibility(id.replace('show', '').toLowerCase(), this.checked);
+                });
             });
-            $('#showHum').on('change', function() {
-                updateChartVisibility('hum', this.checked);
-            });
-            $('#showLight').on('change', function() {
-                updateChartVisibility('light', this.checked);
-            });
-            $('#showSound').on('change', function() {
-                updateChartVisibility('snd', this.checked);
-            });
-            
-            function createChart(canvasId, label) {
-                const ctx = document.getElementById(canvasId).getContext('2d');
-                return new Chart(ctx, {
+
+            function createChart(canvasId, label, color) {
+                return new Chart(document.getElementById(canvasId).getContext('2d'), {
                     type: 'line',
-                    data: {
-                        datasets: [] // Will be populated dynamically
-                    },
+                    data: { datasets: [] },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    font: {
-                                        size: 14,
-                                        family: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"
-                                    }
-                                }
-                            },
+                            legend: { position: 'top' },
                             tooltip: {
                                 mode: 'index',
                                 intersect: false,
-                                backgroundColor: 'rgba(0,0,0,0.7)',
-                                titleFont: {
-                                    size: 16
-                                },
-                                bodyFont: {
-                                    size: 14
-                                },
                                 callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        label += context.parsed.y.toFixed(2);
-                                        return label;
-                                    }
+                                    label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}`
                                 }
                             }
                         },
                         scales: {
                             x: {
                                 type: 'time',
-                                time: {
-                                    unit: 'hour',
-                                    tooltipFormat: 'MMM D, h:mm A'
-                                },
-                                grid: {
-                                    display: false
-                                }
+                                time: { unit: 'minute', tooltipFormat: 'MMM D, h:mm A' },
+                                grid: { display: false }
                             },
-                            y: {
-                                beginAtZero: false,
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                }
-                            }
+                            y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } }
                         }
                     }
                 });
             }
-            
+
             function updateEventDetails(eventData) {
                 $('#detailVenue').text(eventData.venue);
                 $('#detailEventType').text(eventData.event_occured);
                 $('#detailInstructor').text(eventData.instructor);
-                
-                const startTime = new Date(eventData.dateWtime_start);
-                const endTime = new Date(eventData.dateWtime_end);
-                $('#detailStartTime').text(startTime.toLocaleString());
-                $('#detailEndTime').text(endTime.toLocaleString());
-                
-                const durationMs = endTime - startTime;
-                const durationHours = durationMs / (1000 * 60 * 60);
-                $('#detailDuration').text(`${durationHours.toFixed(1)} hours`);
+                $('#detailStartTime').text(new Date(eventData.dateWtime_start).toLocaleString());
+                $('#detailEndTime').text(new Date(eventData.dateWtime_end).toLocaleString());
+                $('#detailDuration').text(
+                    ((new Date(eventData.dateWtime_end) - new Date(eventData.dateWtime_start)) / (1000 * 60 * 60)).toFixed(1) + ' hours'
+                );
             }
-            
+
             function fetchEventSensorData(eventId) {
                 $.get(`/event_sensor_data/?event_id=${eventId}`, function(data) {
                     currentSensorData = data;
                     updateChartsWithEventData(data);
-                    updateAverageStats(data);
-                }).fail(function(error) {
-                    console.error("Error fetching sensor data:", error);
+                    updateStatistics(data);
+                }).fail(error => console.error("Error fetching sensor data:", error));
+            }
+
+            function updateChartsWithEventData(data) {
+                const sensors = [
+                    { chart: charts.temp, field: 'temp', label: 'Temperature (°C)' },
+                    { chart: charts.hum, field: 'hum', label: 'Humidity (%)' },
+                    { chart: charts.light, field: 'light', label: 'Light Level (%)' },
+                    { chart: charts.snd, field: 'snd', label: 'Sound Level (dB)' }
+                ];
+
+                sensors.forEach(({ chart, field, label }) => {
+                    chart.data.datasets = data.length ? [{
+                        label,
+                        borderColor: chart.canvas.id === 'tempChart' ? '#FF6384' :
+                                    chart.canvas.id === 'humChart' ? '#36A2EB' :
+                                    chart.canvas.id === 'lightChart' ? '#FFCE56' : '#4BC0C0',
+                        backgroundColor: 'rgba(0,0,0,0.1)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.3,
+                        data: data.map(item => ({ x: item.date_created, y: Number(item[field]) }))
+                    }] : [];
+                    chart.update();
                 });
             }
-            
-            function updateChartsWithEventData(data) {
-                // Update each chart with the data
-                updateChart(tempChart, data, 'temp', 'Temperature (°C)');
-                updateChart(humChart, data, 'hum', 'Humidity (%)');
-                updateChart(lightChart, data, 'light', 'Light Level (lux)');
-                updateChart(sndChart, data, 'snd', 'Sound Level (dB)');
+
+            function updateStatistics(data) {
+                const sensors = [
+                    { key: 'temp', unit: '°C', label: 'Temperature' },
+                    { key: 'hum', unit: '%', label: 'Humidity' },
+                    { key: 'light', unit: '%', label: 'Light Level' },
+                    { key: 'snd', unit: 'dB', label: 'Sound Level' }
+                ];
+
+                sensors.forEach(({ key, unit }) => {
+                    const values = data.map(item => Number(item[key])).filter(val => !isNaN(val));
+                    if (values.length) {
+                        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+                        const min = Math.min(...values);
+                        const max = Math.max(...values);
+                        $(`#avg${key.charAt(0).toUpperCase() + key.slice(1)}`).text(`${avg.toFixed(1)} ${unit}`);
+                        $(`#${key}Avg`).text(avg.toFixed(1));
+                        $(`#${key}Min`).text(min.toFixed(1));
+                        $(`#${key}Max`).text(max.toFixed(1));
+                        $(`#${key}Count`).text(values.length);
+                    } else {
+                        $(`#avg${key.charAt(0).toUpperCase() + key.slice(1)}`).text(`-- ${unit}`);
+                        $(`#${key}Avg`).text('--');
+                        $(`#${key}Min`).text('--');
+                        $(`#${key}Max`).text('--');
+                        $(`#${key}Count`).text('0');
+                    }
+                });
             }
-            
-            function updateChart(chart, data, field, label) {
-                if (!data || data.length === 0) {
-                    console.warn(`No data available for ${field}`);
-                    chart.data.datasets = [];
-                    chart.update();
-                    return;
-                }
-                
-                chart.data.datasets = [{
-                    label: label,
-                    borderColor: '#36A2EB',
-                    backgroundColor: '#36A2EB',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#36A2EB',
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    fill: true,
-                    tension: 0.3,
-                    data: data.map(item => ({
-                        x: item.date_created,
-                        y: item[field]
-                    }))
-                }];
-                chart.update();
-            }
-            
-            function updateAverageStats(data) {
-                if (!data || data.length === 0) {
-                    console.warn("No data available for statistics");
-                    return;
-                }
-                
-                // Calculate statistics for each sensor type
-                const tempValues = data.map(item => item.temp).filter(val => val !== undefined);
-                const humValues = data.map(item => item.hum).filter(val => val !== undefined);
-                const lightValues = data.map(item => item.light).filter(val => val !== undefined);
-                const soundValues = data.map(item => item.snd).filter(val => val !== undefined);
-                
-                // Helper function to calculate standard deviation
-                function calculateStdDev(values, avg) {
-                    const squareDiffs = values.map(val => Math.pow(val - avg, 2));
-                    const avgSquareDiff = squareDiffs.reduce((sum, val) => sum + val, 0) / values.length;
-                    return Math.sqrt(avgSquareDiff);
-                }
-                
-                // Update temperature stats
-                if (tempValues.length > 0) {
-                    const tempAvg = calculateAverage(tempValues);
-                    const tempMin = Math.min(...tempValues);
-                    const tempMax = Math.max(...tempValues);
-                    const tempStd = calculateStdDev(tempValues, tempAvg);
-                    
-                    $('#avgTemp').text(tempAvg.toFixed(1));
-                    $('#tempAvg').text(`${tempAvg.toFixed(1)} °C`);
-                    $('#tempMin').text(`${tempMin.toFixed(1)} °C`);
-                    $('#tempMax').text(`${tempMax.toFixed(1)} °C`);
-                }
-                
-                // Update humidity stats
-                if (humValues.length > 0) {
-                    const humAvg = calculateAverage(humValues);
-                    const humMin = Math.min(...humValues);
-                    const humMax = Math.max(...humValues);
-                    const humStd = calculateStdDev(humValues, humAvg);
-                    
-                    $('#avgHum').text(humAvg.toFixed(1));
-                    $('#humAvg').text(`${humAvg.toFixed(1)} %`);
-                    $('#humMin').text(`${humMin.toFixed(1)} %`);
-                    $('#humMax').text(`${humMax.toFixed(1)} %`);
-                }
-                
-                // Update light stats
-                if (lightValues.length > 0) {
-                    const lightAvg = calculateAverage(lightValues);
-                    const lightMin = Math.min(...lightValues);
-                    const lightMax = Math.max(...lightValues);
-                    const lightStd = calculateStdDev(lightValues, lightAvg);
-                    
-                    $('#avgLight').text(lightAvg.toFixed(1));
-                    $('#lightAvg').text(`${lightAvg.toFixed(1)} lux`);
-                    $('#lightMin').text(`${lightMin.toFixed(1)} lux`);
-                    $('#lightMax').text(`${lightMax.toFixed(1)} lux`);
-                }
-                
-                // Update sound stats
-                if (soundValues.length > 0) {
-                    const soundAvg = calculateAverage(soundValues);
-                    const soundMin = Math.min(...soundValues);
-                    const soundMax = Math.max(...soundValues);
-                    const soundStd = calculateStdDev(soundValues, soundAvg);
-                    
-                    $('#avgSound').text(soundAvg.toFixed(1));
-                    $('#soundAvg').text(`${soundAvg.toFixed(1)} dB`);
-                    $('#soundMin').text(`${soundMin.toFixed(1)} dB`);
-                    $('#soundMax').text(`${soundMax.toFixed(1)} dB`);
-                }
-            }
-            
-            function calculateAverage(values) {
-                return values.reduce((sum, val) => sum + val, 0) / values.length;
-            }
-            
-            
-            
+
             function updateChartVisibility(chartType, isVisible) {
-                const chartCol = document.getElementById(`${chartType}Col`);
-                const chartCard = document.getElementById(`${chartType}Card`);
+                const chartCol = $(`#${chartType}Col`)[0];
+                chartCol.style.display = isVisible ? 'block' : 'none';
                 
-                if (isVisible) {
-                    chartCol.style.display = 'block';
-                    chartCard.style.display = 'block';
-                } else {
-                    chartCol.style.display = 'none';
-                    chartCard.style.display = 'none';
-                }
+                const visibleCharts = ['showTemp', 'showHum', 'showLight', 'showSound']
+                    .filter(id => document.getElementById(id).checked).length;
                 
-                // Count visible charts
-                const visibleCharts = [
-                    document.getElementById('showTemp').checked,
-                    document.getElementById('showHum').checked,
-                    document.getElementById('showLight').checked,
-                    document.getElementById('showSound').checked
-                ].filter(Boolean).length;
-                
-                // Update chart widths based on how many are visible
-                const chartCols = document.querySelectorAll('.chart-col');
-                chartCols.forEach(col => {
-                    if (col.style.display !== 'none') {
-                        if (visibleCharts === 1) {
-                            col.classList.add('full-width-chart');
-                            col.classList.remove('col-lg-6');
-                        } else {
-                            col.classList.remove('full-width-chart');
-                            col.classList.add('col-lg-6');
-                        }
+                $('.chart-col').each(function() {
+                    if (this.style.display !== 'none') {
+                        $(this).toggleClass('col-md-6', visibleCharts > 1)
+                               .toggleClass('col-12', visibleCharts === 1);
                     }
                 });
             }
