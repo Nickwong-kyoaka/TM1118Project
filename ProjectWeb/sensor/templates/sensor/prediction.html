@@ -528,6 +528,14 @@
                 updateChartTitle(this.value);
             });
             
+            // Node ID selection change handler
+            document.getElementById('node_id').addEventListener('change', function() {
+                const target = document.getElementById('target').value;
+                if (target) {
+                    fetchLatestNodeData(this.value);
+                }
+            });
+            
             // Duration button click handler
             document.querySelectorAll('.duration-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -614,46 +622,43 @@
                 
                 inputFields.innerHTML = html;
                 
-                // Populate with sample data for testing
-                populateSampleData(target);
+                // Populate with latest data for the selected node
+                const nodeId = document.getElementById('node_id').value;
+                if (nodeId) {
+                    fetchLatestNodeData(nodeId);
+                }
             }
             
-            // Populate form with sample data for testing
-            function populateSampleData(target) {
-                const samples = {
-                    'A01': {
-                        loc: 'W311A',
-                        temp: 22.5,
-                        hum: 45,
-                        light: 50,
-                        snd: -63
-                    },
-                    'A07': {
-                        loc: 'W311D-Z2',
-                        temp: 23.1,
-                        hum: 47,
-                        light: 35,
-                        snd: -58
-                    }
-                };
-                
-                const nodeId = document.getElementById('node_id').value;
-                if (nodeId && samples[nodeId]) {
-                    document.getElementById('loc').value = samples[nodeId].loc;
-                    
-                    if (target !== 'temp' && document.getElementById('temp')) {
-                        document.getElementById('temp').value = samples[nodeId].temp;
-                    }
-                    if (target !== 'hum' && document.getElementById('hum')) {
-                        document.getElementById('hum').value = samples[nodeId].hum;
-                    }
-                    if (target !== 'light' && document.getElementById('light')) {
-                        document.getElementById('light').value = samples[nodeId].light;
-                    }
-                    if (target !== 'snd' && document.getElementById('snd')) {
-                        document.getElementById('snd').value = samples[nodeId].snd;
-                    }
-                }
+            // Fetch latest data for a node and populate the form
+            function fetchLatestNodeData(nodeId) {
+                fetch(`/sensor/data/?node_id=${nodeId}&limit=1`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            const latestData = data[0];
+                            
+                            // Set location
+                            document.getElementById('loc').value = latestData.loc;
+                            
+                            // Set input values based on target
+                            const target = document.getElementById('target').value;
+                            if (target !== 'temp' && document.getElementById('temp')) {
+                                document.getElementById('temp').value = latestData.temp;
+                            }
+                            if (target !== 'hum' && document.getElementById('hum')) {
+                                document.getElementById('hum').value = latestData.hum;
+                            }
+                            if (target !== 'light' && document.getElementById('light')) {
+                                document.getElementById('light').value = latestData.light;
+                            }
+                            if (target !== 'snd' && document.getElementById('snd')) {
+                                document.getElementById('snd').value = latestData.snd;
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching latest node data:', error);
+                    });
             }
             
             // Form submission handler

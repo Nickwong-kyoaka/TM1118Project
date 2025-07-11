@@ -15,16 +15,26 @@ def mqtt_on_message(client, userdata, msg):
         print("Received message on topic %s : %s" % (msg.topic, iotData))
         
         if all(key in iotData for key in ["Start", "Temp", "Hum", "MOVED"]):
+            latest_record = Data_Receive.objects.last()
+            move_status = iotData["MOVED"]
+            
+            if iotData["MOVED"] == "True":
+                move_status = "True"
+            elif iotData["Start"] == "False":
+                move_status = "False"
+            elif latest_record and latest_record.start == "True" and iotData["MOVED"] == "True":
+                move_status = "True"
+                print("MTQQ alarmed")
+                client.publish("TeamC05Alarm", "Alarm:True")
+            
             k = Data_Receive(
                 start=iotData["Start"],
                 p_temp=iotData["Temp"],
                 p_hum=iotData["Hum"],
-                move=iotData["MOVED"],
+                move=move_status,
             )
             k.save()
             
-            if iotData["MOVED"] == "True":
-                client.publish("TeamC05Alarm", json.dumps({"MOVED": "True"}))
     except Exception as e:
         print(f"Error processing MQTT message: {e}")
 

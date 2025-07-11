@@ -246,6 +246,16 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        .status-refresh {
+            animation: statusPulse 1.5s infinite;
+        }
+        
+        @keyframes statusPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -284,7 +294,7 @@
                         <div>
                             <h5 class="mb-1">Inactivity Alert</h5>
                             <p class="mb-0">You've been inactive for <strong>{{ inactive_time }}</strong>. Time to stand up and move!</p>
-                            <p class="health-tip mb-0">Tip: Try standing up and doing some light stretches to improve circulation.</p>
+                            <p class="health-tip mb-0">Tip Motivate: Try standing up and doing some light stretches to improve circulation.</p>
                         </div>
                     </div>
                 </div>
@@ -297,7 +307,7 @@
                     <p class="mb-3">We've noticed you've been inactive. Let's set up reminders to help you stay healthy!</p>
                     <div class="mb-3">
                         <label for="timerMinutes" class="form-label">How often would you like to be reminded to move?</label>
-                        <input type="number" class="form-control" id="timerMinutes" min="15" max="240" value="60">
+                        <input type="number" class="form-control" id="timerMinutes" min="1" max="240" value="60">
                         <div class="form-text">Experts recommend moving every 30-90 minutes</div>
                     </div>
                     <button class="btn btn-primary w-100" onclick="saveTimerSettings()">
@@ -329,7 +339,7 @@
                                     <div class="sensor-value">
                                         {% if personal_data %}{{ personal_data.p_temp }}°C{% else %}--{% endif %}
                                     </div>
-                                    <p class="health-tip">Normal range: 36.1°C - 37.2°C</p>
+                                    <p class="health-tip">Normal range: 22.0°C - 25.0°C</p>
                                 </div>
                             </div>
                         </div>
@@ -359,9 +369,9 @@
                                     <div class="sensor-value">
                                         {% if personal_data %}
                                             {% if personal_data.move == 'True' %}
-                                                <span class="status-badge status-active">Active</span>
+                                                <span id="statusBadge" class="status-badge status-active">Active</span>
                                             {% else %}
-                                                <span class="status-badge status-inactive">Inactive</span>
+                                                <span id="statusBadge" class="status-badge status-inactive">Inactive</span>
                                             {% endif %}
                                         {% else %}
                                             --
@@ -390,7 +400,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="alertTime" class="form-label">Reminder Interval (minutes)</label>
-                        <input type="number" class="form-control" id="alertTime" min="15" max="240" value="60">
+                        <input type="number" class="form-control" id="alertTime" min="1" max="240" value="60">
                         <div class="form-text">How often you'd like to be reminded to move</div>
                     </div>
                     <div class="d-grid gap-2">
@@ -470,17 +480,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script>
         // Global variables
-        let alertThreshold = localStorage.getItem('alertTime') || 60; // Default 60 minutes
+        let alertThreshold = parseInt(localStorage.getItem('alertTime')) || 60; // Default 60 minutes
         let alarmTriggered = false;
         let countdownInterval = null;
-        let lastActiveTime = "{{ personal_data.created_time|default:'' }}";
-        let mqttClient;
+        let lastActiveTimestamp = null; // Store as Unix timestamp (milliseconds)
+        let mqttClient = null;
         let totalCountdownSeconds = alertThreshold * 60;
+        let statusCheckInterval = null;
+        let timerStartTime = null; // Track when timer started counting
+        let accumulatedInactiveSeconds = 0; // Track total inactive time
+        let isActive = false; // Track current movement status
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadSettings();
             initializeMQTT();
+            syncTimerState();
             updateInactiveTimer();
             setInterval(updateInactiveTimer, 1000);
             
@@ -491,31 +506,78 @@
             document.getElementById('alertTime').value = alertThreshold;
             
             // Periodic data refresh
-            setInterval(fetchLatestData, 30000); // Refresh every 30 seconds
+            setInterval(syncTimerState, 30000); // Sync every 30 seconds
+            statusCheckInterval = setInterval(checkStatusChange, 2000);
         });
 
-        // Fetch latest data for real-time updates
-        function fetchLatestData() {
+        // Synchronize timer state with backend
+        function syncTimerState() {
             fetch('/personal-data-latest/')
                 .then(response => response.json())
                 .then(data => {
                     if (data.personal_data && data.personal_data.created_time) {
-                        lastActiveTime = data.personal_data.created_time;
-                        if (data.personal_data.move === 'True') {
+                        lastActiveTimestamp = new Date(data.personal_data.created_time).getTime();
+                        isActive = data.personal_data.move === 'True';
+                        if (isActive) {
                             resetInactivityTimer();
+                        } else {
+                            startCountdown();
                         }
                         updateInactiveTimer();
+                    } else {
+                        console.warn('No valid data received, using current time as fallback');
+                        lastActiveTimestamp = Date.now();
+                        isActive = false;
+                        startCountdown();
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching latest data:', error);
-                    lastActiveTime = new Date().toISOString(); // Fallback to current time
+                    console.error('Error syncing timer state:', error);
+                    lastActiveTimestamp = Date.now();
+                    isActive = false;
                     startCountdown();
                 });
         }
 
+        // Check if status has changed and update UI
+        function checkStatusChange() {
+            fetch('/personal-data-latest/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.personal_data) {
+                        const currentStatus = document.getElementById('statusBadge');
+                        if (currentStatus) {
+                            const serverStatus = data.personal_data.move === 'True' ? 'Active' : 'Inactive';
+                            const newIsActive = data.personal_data.move === 'True';
+                            if (currentStatus.textContent !== serverStatus) {
+                                currentStatus.classList.add('status-refresh');
+                                setTimeout(() => {
+                                    currentStatus.textContent = serverStatus;
+                                    currentStatus.className = serverStatus === 'Active' ? 
+                                        'status-badge status-active' : 'status-badge status-inactive';
+                                    currentStatus.classList.remove('status-refresh');
+                                }, 500);
+                                if (newIsActive && !isActive) {
+                                    // Transition from Inactive to Active: pause and reset timer
+                                    resetInactivityTimer();
+                                } else if (!newIsActive && isActive) {
+                                    // Transition from Active to Inactive: start/resume timer
+                                    timerStartTime = Date.now();
+                                    startCountdown();
+                                }
+                                isActive = newIsActive;
+                            }
+                        }
+                    }
+                })
+                .catch(error => console.error('Error checking status:', error));
+        }
+
         // MQTT Client Setup
         function initializeMQTT() {
+            if (mqttClient && mqttClient.isConnected()) {
+                mqttClient.disconnect();
+            }
             mqttClient = new Paho.MQTT.Client("ia.ic.polyu.edu.hk", 1883, "webClient_" + Math.random().toString(16).substr(2, 8));
             
             mqttClient.onConnectionLost = function(response) {
@@ -528,10 +590,29 @@
                 try {
                     const data = JSON.parse(message.payloadString);
                     if (data.MOVED === "True") {
-                        lastActiveTime = new Date().toISOString();
+                        lastActiveTimestamp = Date.now();
+                        isActive = true;
                         resetInactivityTimer();
-                        alarmTriggered = false; // Reset alarm state
-                        document.getElementById('alarmDisplay').style.display = 'none'; // Hide alarm
+                        alarmTriggered = false;
+                        document.getElementById('alarmDisplay').style.display = 'none';
+                        
+                        const statusBadge = document.getElementById('statusBadge');
+                        if (statusBadge) {
+                            statusBadge.textContent = 'Active';
+                            statusBadge.className = 'status-badge status-active status-refresh';
+                            setTimeout(() => {
+                                statusBadge.classList.remove('status-refresh');
+                            }, 500);
+                            
+                            fetch('/update-move-status/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': getCookie('csrftoken'),
+                                },
+                                body: JSON.stringify({ move: 'True' })
+                            }).catch(error => console.error('Error updating move status:', error));
+                        }
                     }
                 } catch (e) {
                     console.error("Error parsing MQTT message:", e);
@@ -556,6 +637,7 @@
             const savedAlertTime = localStorage.getItem('alertTime');
             if (savedAlertTime) {
                 alertThreshold = parseInt(savedAlertTime);
+                totalCountdownSeconds = alertThreshold * 60;
                 document.getElementById('alertTime').value = alertThreshold;
             }
             
@@ -567,9 +649,9 @@
 
         // Save timer settings and set timer flag
         function saveTimerSettings() {
-            const timerMinutes = document.getElementById('timerMinutes').value;
-            if (timerMinutes && parseInt(timerMinutes) >= 15 && parseInt(timerMinutes) <= 240) {
-                alertThreshold = parseInt(timerMinutes);
+            const timerMinutes = parseInt(document.getElementById('timerMinutes').value);
+            if (timerMinutes >= 1 && timerMinutes <= 240) {
+                alertThreshold = timerMinutes;
                 localStorage.setItem('alertTime', alertThreshold);
                 totalCountdownSeconds = alertThreshold * 60;
                 fetch('/set-timer-flag/', {
@@ -582,8 +664,12 @@
                 }).then(response => {
                     if (response.ok) {
                         showToast('Timer settings saved and started!', 'success');
-                        lastActiveTime = new Date().toISOString();
-                        startCountdown();
+                        lastActiveTimestamp = Date.now();
+                        timerStartTime = Date.now();
+                        accumulatedInactiveSeconds = 0;
+                        if (!isActive) {
+                            startCountdown();
+                        }
                     } else {
                         showToast('Failed to start timer', 'error');
                     }
@@ -592,24 +678,28 @@
                     showToast('Error saving timer settings', 'error');
                 });
             } else {
-                showToast('Please enter a valid time (15-240 minutes)', 'error');
+                showToast('Please enter a valid time (1-240 minutes)', 'error');
             }
         }
 
         // Save all settings
         function saveSettings() {
-            const timerMinutes = document.getElementById('alertTime').value;
+            const timerMinutes = parseInt(document.getElementById('alertTime').value);
             const email = document.getElementById('userEmail').value;
             
-            if (timerMinutes && parseInt(timerMinutes) >= 15 && parseInt(timerMinutes) <= 240) {
-                alertThreshold = parseInt(timerMinutes);
+            if (timerMinutes >= 1 && timerMinutes <= 240) {
+                alertThreshold = timerMinutes;
                 localStorage.setItem('alertTime', alertThreshold);
                 totalCountdownSeconds = alertThreshold * 60;
                 showToast('Settings saved!', 'success');
-                lastActiveTime = new Date().toISOString();
-                startCountdown();
+                lastActiveTimestamp = Date.now();
+                timerStartTime = Date.now();
+                accumulatedInactiveSeconds = 0;
+                if (!isActive) {
+                    startCountdown();
+                }
             } else {
-                showToast('Please enter a valid time (15-240 minutes)', 'error');
+                showToast('Please enter a valid time (1-240 minutes)', 'error');
                 return;
             }
             
@@ -644,8 +734,20 @@
             }).then(response => {
                 if (response.ok) {
                     showToast('Timer start test initiated!', 'success');
-                    lastActiveTime = new Date().toISOString();
+                    lastActiveTimestamp = Date.now();
+                    timerStartTime = Date.now();
+                    accumulatedInactiveSeconds = 0;
+                    isActive = true;
                     resetInactivityTimer();
+                    
+                    const statusBadge = document.getElementById('statusBadge');
+                    if (statusBadge) {
+                        statusBadge.textContent = 'Active';
+                        statusBadge.className = 'status-badge status-active status-refresh';
+                        setTimeout(() => {
+                            statusBadge.classList.remove('status-refresh');
+                        }, 500);
+                    }
                 } else {
                     showToast('Failed to test timer start', 'error');
                 }
@@ -657,38 +759,44 @@
 
         // Update inactive timer display
         function updateInactiveTimer() {
-            const now = new Date();
-            const lastActive = new Date(lastActiveTime || new Date().toISOString());
-            const inactiveSeconds = Math.floor((now - lastActive) / 1000);
             const timerDisplay = document.getElementById('inactiveTimer');
-            if (timerDisplay) {
-                const hours = Math.floor(inactiveSeconds / 3600);
-                const minutes = Math.floor((inactiveSeconds % 3600) / 60);
-                const seconds = Math.floor(inactiveSeconds % 60);
-                timerDisplay.textContent = `Inactive for: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
+            if (!timerDisplay || !lastActiveTimestamp) return;
+            
+            const now = Date.now();
+            const inactiveSeconds = Math.floor((now - lastActiveTimestamp) / 1000);
+            const hours = Math.floor(inactiveSeconds / 3600);
+            const minutes = Math.floor((inactiveSeconds % 3600) / 60);
+            const seconds = inactiveSeconds % 60;
+            timerDisplay.textContent = `Inactive for: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
         // Start countdown timer
         function startCountdown() {
-            clearInterval(countdownInterval);
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
             const countdownElement = document.getElementById('countdownTimer');
             const progressBar = document.getElementById('countdownProgress');
             if (!countdownElement || !progressBar) return;
 
-            if (!lastActiveTime || isNaN(new Date(lastActiveTime).getTime())) {
-                lastActiveTime = new Date().toISOString();
+            if (!timerStartTime) {
+                timerStartTime = Date.now();
             }
-            totalCountdownSeconds = alertThreshold * 60;
-            
-            countdownInterval = setInterval(() => {
-                const now = new Date();
-                const lastActive = new Date(lastActiveTime);
-                const inactiveSeconds = Math.floor((now - lastActive) / 1000);
-                const remainingSeconds = Math.max(0, totalCountdownSeconds - inactiveSeconds);
 
-                const progressPercent = ((totalCountdownSeconds - remainingSeconds) / totalCountdownSeconds) * 100;
-                progressBar.style.width = `${Math.min(100, progressPercent)}%`;
+            countdownInterval = setInterval(() => {
+                if (isActive) {
+                    // Pause timer when active
+                    countdownElement.textContent = formatTime(accumulatedInactiveSeconds);
+                    progressBar.style.width = `${(accumulatedInactiveSeconds / totalCountdownSeconds) * 100}%`;
+                    return;
+                }
+
+                const now = Date.now();
+                const elapsedSeconds = Math.floor((now - timerStartTime) / 1000) + accumulatedInactiveSeconds;
+                const remainingSeconds = Math.max(0, totalCountdownSeconds - elapsedSeconds);
+
+                const progressPercent = Math.min(100, (elapsedSeconds / totalCountdownSeconds) * 100);
+                progressBar.style.width = `${progressPercent}%`;
                 
                 if (remainingSeconds <= 300) {
                     progressBar.style.background = "linear-gradient(90deg, var(--warning-color), var(--danger-color))";
@@ -701,13 +809,17 @@
                     progressBar.style.width = '100%';
                     triggerAlarm();
                 } else {
-                    const hours = Math.floor(remainingSeconds / 3600);
-                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
-                    const seconds = remainingSeconds % 60;
-                    countdownElement.textContent = 
-                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    countdownElement.textContent = formatTime(remainingSeconds);
                 }
             }, 1000);
+        }
+
+        // Format time in HH:MM:SS
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         // Trigger alarm
@@ -715,21 +827,28 @@
             alarmTriggered = true;
             document.getElementById('alarmDisplay').style.display = 'flex';
             
-            if ("{{ personal_data.start|default:'False' }}" !== 'True') {
-                const message = new Paho.MQTT.Message("Alart:True");
-                message.destinationName = "TeamC05Alarm";
-                mqttClient.send(message);
-                console.log("Alert sent to TeamC05Alarm");
-                
-                fetch('/set-timer-flag/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    },
-                    body: JSON.stringify({ alert_minutes: alertThreshold })
-                }).catch(error => console.error('Error setting timer flag:', error));
-            }
+            fetch('/set-alarm-state/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ alarm_triggered: true })
+            }).catch(error => console.error('Error setting alarm state:', error));
+
+            const message = new Paho.MQTT.Message("Alarm:True");
+            message.destinationName = "TeamC05Alarm";
+            mqttClient.send(message);
+            console.log("Alert sent to TeamC05Alarm");
+            
+            fetch('/set-timer-flag/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ alert_minutes: alertThreshold })
+            }).catch(error => console.error('Error setting timer flag:', error));
 
             const email = document.getElementById('userEmail').value;
             if (email) {
@@ -744,6 +863,14 @@
             alarmTriggered = false;
             resetInactivityTimer();
             
+            fetch('/clear-alarm-state/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            }).catch(error => console.error('Error clearing alarm state:', error));
+
             fetch('/clear-timer-flag/', {
                 method: 'POST',
                 headers: {
@@ -751,26 +878,55 @@
                     'X-CSRFToken': getCookie('csrftoken'),
                 }
             }).catch(error => console.error('Error clearing timer flag:', error));
+            
+            fetch('/update-move-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ move: 'True' })
+            }).then(response => {
+                if (response.ok) {
+                    const statusBadge = document.getElementById('statusBadge');
+                    if (statusBadge) {
+                        statusBadge.textContent = 'Active';
+                        statusBadge.className = 'status-badge status-active status-refresh';
+                        setTimeout(() => {
+                            statusBadge.classList.remove('status-refresh');
+                        }, 500);
+                        isActive = true;
+                    }
+                }
+            }).catch(error => console.error('Error updating move status:', error));
         }
 
         // Snooze alarm for 5 minutes
         function snoozeAlarm() {
             document.getElementById('alarmDisplay').style.display = 'none';
             alarmTriggered = false;
-            
-            const snoozeTime = new Date();
-            snoozeTime.setMinutes(snoozeTime.getMinutes() - (alertThreshold - 5));
-            lastActiveTime = snoozeTime.toISOString();
-            
-            startCountdown();
+            accumulatedInactiveSeconds = (alertThreshold - 5) * 60;
+            timerStartTime = Date.now();
+            lastActiveTimestamp = Date.now();
+            if (!isActive) {
+                startCountdown();
+            }
             showToast('Alarm snoozed for 5 minutes', 'success');
         }
 
         // Reset inactivity timer
         function resetInactivityTimer() {
-            lastActiveTime = new Date().toISOString();
+            lastActiveTimestamp = Date.now();
+            timerStartTime = Date.now();
+            accumulatedInactiveSeconds = 0;
             clearInterval(countdownInterval);
-            startCountdown();
+            const countdownElement = document.getElementById('countdownTimer');
+            const progressBar = document.getElementById('countdownProgress');
+            if (countdownElement && progressBar) {
+                countdownElement.textContent = formatTime(totalCountdownSeconds);
+                progressBar.style.width = '0%';
+                progressBar.style.background = "linear-gradient(90deg, var(--primary-color), var(--secondary-color))";
+            }
         }
 
         // Test alarm
@@ -826,6 +982,19 @@
             const parts = value.split(`; ${name}=`);
             if (parts.length === 2) return parts.pop().split(';').shift();
         }
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', function() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            if (mqttClient && mqttClient.isConnected()) {
+                mqttClient.disconnect();
+            }
+        });
     </script>
 </body>
 </html>

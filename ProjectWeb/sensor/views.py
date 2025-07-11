@@ -9,11 +9,8 @@ from .ai_utils import predict_value, predict_for_time_range
 from django.core.mail import send_mail
 from django.views.decorators.csrf import csrf_exempt
 from .Mqtt_alarm import alarm_mqtt
-from dateutil.parser import parse  # Added for robust date parsing
-from django.utils import timezone  # Added for timezone awareness
-
-
-
+from dateutil.parser import parse
+from django.utils import timezone
 
 def index(request):
     return render(request, 'sensor/index.html')
@@ -40,6 +37,7 @@ def sensor_data(request):
     node_id = request.GET.get('node_id')
     start_date = request.GET.get('startDate')
     end_date = request.GET.get('endDate')
+    limit = request.GET.get('limit')
     
     if location and node_id:
         queryset = queryset.filter(loc=location)
@@ -52,6 +50,9 @@ def sensor_data(request):
         queryset = queryset.filter(date_created__gte=start_date)
     if end_date:
         queryset = queryset.filter(date_created__lte=end_date)
+    
+    if limit:
+        queryset = queryset.order_by('-date_created')[:int(limit)]
     
     data = list(queryset.values())
     return JsonResponse(data, safe=False)
@@ -102,7 +103,7 @@ def event_data(request):
     if venue:
         queryset = queryset.filter(venue__iexact=venue)
     if instructor:
-        queryset = queryset.filter(instructor__iexact=instructor)  # Case-insensitive for instructor
+        queryset = queryset.filter(instructor__iexact=instructor)
     
     if start_date and end_date:
         try:
@@ -157,7 +158,7 @@ def event_sensor_data(request):
             queryset = queryset.filter(
                 date_created__gte=event.dateWtime_start,
                 date_created__lte=event.dateWtime_end,
-                loc=event.venue  # Changed from iexact to exact match
+                loc=event.venue
             )
             print(f"Filtering for event_id={event_id}, venue={event.venue}, time range={event.dateWtime_start} to {event.dateWtime_end}")
         except Event_Venue.DoesNotExist:
@@ -165,7 +166,7 @@ def event_sensor_data(request):
             return JsonResponse({'data': [], 'message': 'Event not found'}, status=200)
     else:
         if venue:
-            queryset = queryset.filter(loc=venue)  # Changed from iexact to exact match
+            queryset = queryset.filter(loc=venue)
         
         if start_date and end_date:
             try:
@@ -179,14 +180,12 @@ def event_sensor_data(request):
                 print(f"Date parsing error: {e}")
                 return JsonResponse({'error': 'Invalid date format'}, status=400)
     
-    # Convert Decimal fields to float for JSON serialization
     data = list(queryset.values(
         'id', 'node_id', 'loc', 
         'temp', 'hum', 'light', 'snd', 
         'date_created'
     ))
     
-    # Convert Decimal fields to float
     for item in data:
         for field in ['temp', 'hum', 'light', 'snd']:
             if item[field] is not None:
@@ -199,7 +198,7 @@ def event_sensor_data(request):
             'message': 'No sensor data found for the selected event or filters'
         }, status=200)
     
-    return JsonResponse({'data': data}, safe=False)
+    return JsonResponse({'data': data}, status=200)
 
 def integrated_event_view(request):
     venues = Event_Venue.objects.values_list('venue', flat=True).distinct()
@@ -241,8 +240,22 @@ def personal_view(request):
         today = timezone.now().date()
         record_date = personal_data.created_time.date()
         
+        # Handle state transitions
+        if personal_data.move == 'True':
+            # Set to Active when move is True
+            personal_data.move = 'True'
+            personal_data.save()
+        elif personal_data.start == 'False':
+            # Set to Inactive when start is False
+            personal_data.move = 'False'
+            personal_data.save()
+        elif request.session.get('alarm_triggered', False) and personal_data.start == 'True' and personal_data.move == 'False':
+            # Set to Active when alarm, start, and move are True
+            personal_data.move = 'True'
+            personal_data.save()
+            request.session['alarm_triggered'] = False
+        
         if personal_data.move == 'False':
-            # Find the last active record before the current inactive record
             last_active_record = Data_Receive.objects.filter(
                 move='True',
                 created_time__lt=personal_data.created_time
@@ -259,28 +272,11 @@ def personal_view(request):
                 inactive_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
                 is_inactive = True
                 
-                # Use session-based alert threshold (default 90 minutes)
-                alert_threshold = request.session.get('alert_threshold', 5400)  # 90 minutes in seconds
+                alert_threshold = request.session.get('alert_threshold', 5400)
                 if inactive_seconds >= alert_threshold:
                     show_alert = True
-            else:
-                # If no active record found, use the earliest inactive record
-                earliest_record = Data_Receive.objects.filter(
-                    move='False'
-                ).order_by('created_time').first()
-                if earliest_record:
-                    time_diff = personal_data.created_time - earliest_record.created_time
-                    inactive_seconds = time_diff.total_seconds()
-                    hours = int(inactive_seconds // 3600)
-                    minutes = int((inactive_seconds % 3600) // 60)
-                    seconds = int(inactive_seconds % 60)
-                    inactive_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-                    is_inactive = True
-                    alert_threshold = request.session.get('alert_threshold', 5400)
-                    if inactive_seconds >= alert_threshold:
-                        show_alert = True
-        
-        # Check if timer should be set
+                    request.session['alarm_triggered'] = True
+    
         if (record_date == today and 
             personal_data.move == 'False' and 
             personal_data.start == 'False' and
@@ -314,16 +310,36 @@ def personal_data_latest(request):
         return JsonResponse(data)
     return JsonResponse({'error': 'No data available'}, status=404)
 
+@csrf_exempt
+def set_alarm_state(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            request.session['alarm_triggered'] = data.get('alarm_triggered', False)
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@csrf_exempt
+def clear_alarm_state(request):
+    if request.method == 'POST':
+        try:
+            if 'alarm_triggered' in request.session:
+                del request.session['alarm_triggered']
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @csrf_exempt
 def set_timer_flag(request):
     if request.method == 'POST':
         try:
-            # Save the alert threshold from the request body
             data = json.loads(request.body)
             alert_minutes = data.get('alert_minutes')
             if alert_minutes:
-                request.session['alert_threshold'] = int(alert_minutes) * 60  # Convert to seconds
+                request.session['alert_threshold'] = int(alert_minutes) * 60
             request.session['timer_set'] = True
             return JsonResponse({'status': 'success'})
         except Exception as e:
@@ -350,10 +366,27 @@ def test_timer_start(request):
             latest_record = Data_Receive.objects.last()
             if latest_record:
                 latest_record.start = 'True'
-                latest_record.move = 'True'  # Simulate movement to reset timer
-                latest_record.created_time = timezone.now()  # Update timestamp
+                latest_record.move = 'True'
+                latest_record.created_time = timezone.now()
                 latest_record.save()
             return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@csrf_exempt
+def update_move_status(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            move_status = data.get('move')
+            latest_record = Data_Receive.objects.last()
+            if latest_record and move_status in ['True', 'False']:
+                latest_record.move = move_status
+                latest_record.created_time = timezone.now()
+                latest_record.save()
+                return JsonResponse({'status': 'success'})
+            return JsonResponse({'status': 'error', 'message': 'Invalid move status or no record found'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
@@ -378,7 +411,7 @@ def predict_future_values(request):
                 input_data['snd'] = float(data.get('snd', 0))
             
             predictions = []
-            now = timezone.now()  # Use timezone-aware datetime
+            now = timezone.now()
             end_time = now + timedelta(hours=duration)
             
             current_time = now
@@ -509,7 +542,6 @@ def check_alarms(request):
                     'snd': "Possible lesson or unknown person detected"
                 }.get(sensor)
 
-                # Check if sensor value is out of threshold
                 is_out_of_range = (
                     (min_thresh is not None and float(sensor_value) < float(min_thresh)) or
                     (max_thresh is not None and float(sensor_value) > float(max_thresh))
@@ -526,12 +558,10 @@ def check_alarms(request):
                         'timestamp': data['timestamp'].isoformat()
                     }
 
-                    # Add to active alarms if not already present
                     if not any(a['node_id'] == node_id and a['sensor'] == sensor for a in active_alarms):
                         new_alarms.append(alarm)
-                        active_alarms.append(alarm)  # Add to active alarms immediately
+                        active_alarms.append(alarm)
 
-                    # Check if we need to send notification (first time or every 5 minutes)
                     last_notification = alarm_timestamps.get(alarm_key)
                     needs_notification = (
                         alarm_key not in triggered_alarms or
@@ -544,10 +574,8 @@ def check_alarms(request):
                         triggered_alarms.add(alarm_key)
                         alarm_timestamps[alarm_key] = current_time.isoformat()
 
-                        # Send MQTT
                         alarm_mqtt.publish_alarm(alarm)
 
-                        # Send email
                         user_email = request.session.get('user_email')
                         if user_email:
                             try:
@@ -567,7 +595,6 @@ def check_alarms(request):
                             except Exception as e:
                                 print(f"Error sending email: {str(e)}")
 
-        # Remove resolved alarms (no longer out of range)
         active_alarms = [
             alarm for alarm in active_alarms
             if any(
@@ -578,7 +605,6 @@ def check_alarms(request):
             )
         ]
 
-    # Update session
     request.session['active_alarms'] = active_alarms
     request.session['triggered_alarms'] = list(triggered_alarms)
     request.session['alarm_timestamps'] = alarm_timestamps
@@ -608,17 +634,12 @@ def acknowledge_alarm(request):
                 alarm = active_alarms[alarm_index]
                 alarm_key = f"{alarm['node_id']}_{alarm['sensor']}"
                 
-                # Remove from active alarms
                 active_alarms.pop(alarm_index)
-                
-                # Remove from triggered alarms and timestamps
                 triggered_alarms.discard(alarm_key)
                 alarm_timestamps.pop(alarm_key, None)
                 
-                # Clear from MQTT tracker
                 alarm_mqtt.clear_triggered_alarm(alarm_key)
                 
-                # Update session
                 request.session['active_alarms'] = active_alarms
                 request.session['triggered_alarms'] = list(triggered_alarms)
                 request.session['alarm_timestamps'] = alarm_timestamps
@@ -646,6 +667,7 @@ def send_email_notification(request):
             send_mail(
                 subject,
                 message,
+                'wongnick.kyoaka@gmail.com',
                 [email],
                 fail_silently=False,
             )
