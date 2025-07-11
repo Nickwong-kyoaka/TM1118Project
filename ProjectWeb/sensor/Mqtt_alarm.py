@@ -8,7 +8,7 @@ matt_topic_publish = "TeamC05Alarm"
 
 class AlarmMQTT:
     def __init__(self):
-        self.client = mqtt.Client("TeamC05AlarmPublisher")
+        self.client = mqtt.Client("TeamC05AlarmPublish")
         self.client.connect(mqtt_broker, mqtt_port)
         self.triggered_alarms = {}  # Track triggered alarms and their last notification time
     

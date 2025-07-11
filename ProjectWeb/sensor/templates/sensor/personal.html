@@ -487,9 +487,7 @@
         let mqttClient = null;
         let totalCountdownSeconds = alertThreshold * 60;
         let statusCheckInterval = null;
-        let timerStartTime = null; // Track when timer started counting
-        let accumulatedInactiveSeconds = 0; // Track total inactive time
-        let isActive = false; // Track current movement status
+        let timerStartTime = null; // Track when timer was started
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
@@ -517,24 +515,19 @@
                 .then(data => {
                     if (data.personal_data && data.personal_data.created_time) {
                         lastActiveTimestamp = new Date(data.personal_data.created_time).getTime();
-                        isActive = data.personal_data.move === 'True';
-                        if (isActive) {
+                        if (data.personal_data.move === 'True') {
                             resetInactivityTimer();
-                        } else {
-                            startCountdown();
                         }
                         updateInactiveTimer();
                     } else {
                         console.warn('No valid data received, using current time as fallback');
                         lastActiveTimestamp = Date.now();
-                        isActive = false;
                         startCountdown();
                     }
                 })
                 .catch(error => {
                     console.error('Error syncing timer state:', error);
                     lastActiveTimestamp = Date.now();
-                    isActive = false;
                     startCountdown();
                 });
         }
@@ -548,7 +541,6 @@
                         const currentStatus = document.getElementById('statusBadge');
                         if (currentStatus) {
                             const serverStatus = data.personal_data.move === 'True' ? 'Active' : 'Inactive';
-                            const newIsActive = data.personal_data.move === 'True';
                             if (currentStatus.textContent !== serverStatus) {
                                 currentStatus.classList.add('status-refresh');
                                 setTimeout(() => {
@@ -557,15 +549,6 @@
                                         'status-badge status-active' : 'status-badge status-inactive';
                                     currentStatus.classList.remove('status-refresh');
                                 }, 500);
-                                if (newIsActive && !isActive) {
-                                    // Transition from Inactive to Active: pause and reset timer
-                                    resetInactivityTimer();
-                                } else if (!newIsActive && isActive) {
-                                    // Transition from Active to Inactive: start/resume timer
-                                    timerStartTime = Date.now();
-                                    startCountdown();
-                                }
-                                isActive = newIsActive;
                             }
                         }
                     }
@@ -591,7 +574,6 @@
                     const data = JSON.parse(message.payloadString);
                     if (data.MOVED === "True") {
                         lastActiveTimestamp = Date.now();
-                        isActive = true;
                         resetInactivityTimer();
                         alarmTriggered = false;
                         document.getElementById('alarmDisplay').style.display = 'none';
@@ -666,10 +648,7 @@
                         showToast('Timer settings saved and started!', 'success');
                         lastActiveTimestamp = Date.now();
                         timerStartTime = Date.now();
-                        accumulatedInactiveSeconds = 0;
-                        if (!isActive) {
-                            startCountdown();
-                        }
+                        startCountdown();
                     } else {
                         showToast('Failed to start timer', 'error');
                     }
@@ -694,10 +673,7 @@
                 showToast('Settings saved!', 'success');
                 lastActiveTimestamp = Date.now();
                 timerStartTime = Date.now();
-                accumulatedInactiveSeconds = 0;
-                if (!isActive) {
-                    startCountdown();
-                }
+                startCountdown();
             } else {
                 showToast('Please enter a valid time (1-240 minutes)', 'error');
                 return;
@@ -736,8 +712,6 @@
                     showToast('Timer start test initiated!', 'success');
                     lastActiveTimestamp = Date.now();
                     timerStartTime = Date.now();
-                    accumulatedInactiveSeconds = 0;
-                    isActive = true;
                     resetInactivityTimer();
                     
                     const statusBadge = document.getElementById('statusBadge');
@@ -779,20 +753,17 @@
             const progressBar = document.getElementById('countdownProgress');
             if (!countdownElement || !progressBar) return;
 
+            if (!lastActiveTimestamp) {
+                lastActiveTimestamp = Date.now();
+                timerStartTime = Date.now();
+            }
             if (!timerStartTime) {
                 timerStartTime = Date.now();
             }
 
             countdownInterval = setInterval(() => {
-                if (isActive) {
-                    // Pause timer when active
-                    countdownElement.textContent = formatTime(accumulatedInactiveSeconds);
-                    progressBar.style.width = `${(accumulatedInactiveSeconds / totalCountdownSeconds) * 100}%`;
-                    return;
-                }
-
                 const now = Date.now();
-                const elapsedSeconds = Math.floor((now - timerStartTime) / 1000) + accumulatedInactiveSeconds;
+                const elapsedSeconds = Math.floor((now - timerStartTime) / 1000);
                 const remainingSeconds = Math.max(0, totalCountdownSeconds - elapsedSeconds);
 
                 const progressPercent = Math.min(100, (elapsedSeconds / totalCountdownSeconds) * 100);
@@ -809,17 +780,13 @@
                     progressBar.style.width = '100%';
                     triggerAlarm();
                 } else {
-                    countdownElement.textContent = formatTime(remainingSeconds);
+                    const hours = Math.floor(remainingSeconds / 3600);
+                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                    const seconds = remainingSeconds % 60;
+                    countdownElement.textContent = 
+                        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 }
             }, 1000);
-        }
-
-        // Format time in HH:MM:SS
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         // Trigger alarm
@@ -895,7 +862,6 @@
                         setTimeout(() => {
                             statusBadge.classList.remove('status-refresh');
                         }, 500);
-                        isActive = true;
                     }
                 }
             }).catch(error => console.error('Error updating move status:', error));
@@ -905,12 +871,9 @@
         function snoozeAlarm() {
             document.getElementById('alarmDisplay').style.display = 'none';
             alarmTriggered = false;
-            accumulatedInactiveSeconds = (alertThreshold - 5) * 60;
-            timerStartTime = Date.now();
+            timerStartTime = Date.now() - (alertThreshold - 5) * 60 * 1000;
             lastActiveTimestamp = Date.now();
-            if (!isActive) {
-                startCountdown();
-            }
+            startCountdown();
             showToast('Alarm snoozed for 5 minutes', 'success');
         }
 
@@ -918,15 +881,8 @@
         function resetInactivityTimer() {
             lastActiveTimestamp = Date.now();
             timerStartTime = Date.now();
-            accumulatedInactiveSeconds = 0;
             clearInterval(countdownInterval);
-            const countdownElement = document.getElementById('countdownTimer');
-            const progressBar = document.getElementById('countdownProgress');
-            if (countdownElement && progressBar) {
-                countdownElement.textContent = formatTime(totalCountdownSeconds);
-                progressBar.style.width = '0%';
-                progressBar.style.background = "linear-gradient(90deg, var(--primary-color), var(--secondary-color))";
-            }
+            startCountdown();
         }
 
         // Test alarm
