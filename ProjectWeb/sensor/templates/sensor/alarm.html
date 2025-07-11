@@ -75,6 +75,43 @@
         .hum-icon { color: #0dcaf0; }
         .light-icon { color: #ffc107; }
         .snd-icon { color: #198754; }
+        
+        /* New styles for better alarm handling */
+        .alarm-badge {
+            font-size: 0.9rem;
+            padding: 0.35em 0.65em;
+        }
+        
+        .acknowledge-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .acknowledge-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        #alarmsTable tr {
+            transition: background-color 0.3s ease;
+        }
+        
+        #alarmsTable tr:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        .notification-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 0.7rem;
+            background: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -90,7 +127,10 @@
                 <a href="/data/" class="btn btn-light btn-sm me-2">Raw Data</a>
                 <a href="/events/integrated" class="btn btn-light btn-sm me-2">Event Dashboard</a>
                 <a href="/predict/" class="btn btn-light btn-sm me-2">AI Prediction</a>
-                <a href="/alarm/" class="btn btn-light btn-sm me-2 active"><i class="fas fa-bell me-1"></i>Alarms</a>
+                <a href="/alarm/" class="btn btn-light btn-sm me-2 active position-relative">
+                    <i class="fas fa-bell me-1"></i>Alarms
+                    <span id="alarmCountBadge" class="notification-count d-none">0</span>
+                </a>
             </div>
         </div>
     </nav>
@@ -102,6 +142,25 @@
                 <i class="fas fa-cog me-2"></i>Alarm Threshold Settings
             </div>
             <div class="card-body">
+                <!-- Email Input Form -->
+                <form id="emailForm" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="user_email" class="form-label">Notification Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="user_email" 
+                                       placeholder="Enter your email for notifications" required>
+                            </div>
+                            <div class="form-text">You'll receive email alerts when alarms are triggered</div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Email
+                            </button>
+                        </div>
+                    </div>
+                </form>
                 <form id="thresholdForm" class="threshold-form">
                     <div class="row">
                         <!-- Temperature Thresholds -->
@@ -198,9 +257,14 @@
         </div>
         
         <!-- Active Alarms Card -->
-        <div class="card" id="alarmsCard" {% if not active_alarms %}style="display: none;"{% endif %}>
-            <div class="card-header bg-danger text-white">
-                <i class="fas fa-bell me-2"></i>Active Alarms
+        <div class="card" id="alarmsCard" style="display: none;">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-bell me-2"></i>Active Alarms
+                </div>
+                <div class="badge bg-light text-danger">
+                    <span id="activeAlarmCount">0</span> Active Alarms
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -217,42 +281,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for alarm in active_alarms %}
-                            <tr class="alarm-row">
-                                <td>{{ alarm.location }}</td>
-                                <td>{{ alarm.node_id }}</td>
-                                <td>
-                                    {% if alarm.sensor == 'temp' %}
-                                        <i class="fas fa-temperature-high temp-icon"></i>Temperature
-                                    {% elif alarm.sensor == 'hum' %}
-                                        <i class="fas fa-tint hum-icon"></i>Humidity
-                                    {% elif alarm.sensor == 'light' %}
-                                        <i class="fas fa-lightbulb light-icon"></i>Light
-                                    {% else %}
-                                        <i class="fas fa-volume-up snd-icon"></i>Sound
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if alarm.sensor == 'temp' %}
-                                        <span class="badge bg-danger">{{ alarm.value }}°C</span>
-                                    {% elif alarm.sensor == 'hum' %}
-                                        <span class="badge bg-info">{{ alarm.value }}%</span>
-                                    {% elif alarm.sensor == 'light' %}
-                                        <span class="badge bg-warning">{{ alarm.value }}%</span>
-                                    {% else %}
-                                        <span class="badge bg-success">{{ alarm.value }}dB</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ alarm.threshold }}</td>
-                                <td>{{ alarm.timestamp|date:"Y-m-d H:i:s" }}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-secondary acknowledge-btn" 
-                                            data-id="{{ forloop.counter0 }}">
-                                        <i class="fas fa-check"></i> Acknowledge
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
+                            <!-- Will be populated by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -315,10 +344,63 @@
     <script>
         $(document).ready(function() {
             // Initialize DataTable for alarms
-            $('#alarmsTable').DataTable({
+            const alarmsTable = $('#alarmsTable').DataTable({
                 responsive: true,
-                order: [[5, 'desc']] // Sort by timestamp descending
+                order: [[5, 'desc']], // Sort by timestamp descending
+                columns: [
+                    { data: 'location' },
+                    { data: 'node_id' },
+                    { 
+                        data: 'sensor',
+                        render: function(data, type, row) {
+                            const icons = {
+                                'temp': '<i class="fas fa-temperature-high temp-icon"></i>Temperature',
+                                'hum': '<i class="fas fa-tint hum-icon"></i>Humidity',
+                                'light': '<i class="fas fa-lightbulb light-icon"></i>Light',
+                                'snd': '<i class="fas fa-volume-up snd-icon"></i>Sound'
+                            };
+                            return icons[data] || data;
+                        }
+                    },
+                    { 
+                        data: 'value',
+                        render: function(data, type, row) {
+                            const badgeClasses = {
+                                'temp': 'bg-danger',
+                                'hum': 'bg-info',
+                                'light': 'bg-warning',
+                                'snd': 'bg-success'
+                            };
+                            const unit = {
+                                'temp': '°C',
+                                'hum': '%',
+                                'light': '%',
+                                'snd': 'dB'
+                            };
+                            return `<span class="badge alarm-badge ${badgeClasses[row.sensor]}">${data}${unit[row.sensor]}</span>`;
+                        }
+                    },
+                    { data: 'threshold' },
+                    { 
+                        data: 'timestamp',
+                        render: function(data) {
+                            return new Date(data).toLocaleString();
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(data, type, row, meta) {
+                            return `<button class="btn btn-sm btn-outline-secondary acknowledge-btn" data-id="${meta.row}">
+                                <i class="fas fa-check"></i> Acknowledge
+                            </button>`;
+                        },
+                        orderable: false
+                    }
+                ]
             });
+            
+            // Track new alarms for notification purposes
+            let knownAlarms = new Set();
             
             // Load saved thresholds
             function loadThresholds() {
@@ -339,6 +421,53 @@
                     $('#snd_min').val(thresholds.snd.min);
                     $('#snd_max').val(thresholds.snd.max);
                 });
+            }
+            
+            // Save email
+            $('#emailForm').submit(function(e) {
+                e.preventDefault();
+                const email = $('#user_email').val().trim();
+                if (email) {
+                    $.ajax({
+                        url: '/set-email/',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ email: email }),
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                showAlert('Email saved successfully!', 'success');
+                            } else {
+                                showAlert('Error: ' + response.message, 'danger');
+                            }
+                        },
+                        error: function(xhr) {
+                            showAlert('Error saving email', 'danger');
+                        }
+                    });
+                } else {
+                    showAlert('Please enter a valid email address', 'warning');
+                }
+            });
+
+            // Load saved email on page load
+            function loadEmail() {
+                $.get('/check-alarms/', function(response) {
+                    if (response.user_email) {
+                        $('#user_email').val(response.user_email);
+                    }
+                });
+            }
+            
+            // Show alert message
+            function showAlert(message, type) {
+                const alert = $(`
+                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `);
+                $('#emailForm').prepend(alert);
+                setTimeout(() => alert.alert('close'), 5000);
             }
             
             // Set default thresholds based on average values
@@ -384,6 +513,8 @@
                         $('#light_max').val((averages.light * 1.2).toFixed(1));
                         $('#snd_min').val((averages.snd * 0.8).toFixed(1));
                         $('#snd_max').val((averages.snd * 1.2).toFixed(1));
+                        
+                        showAlert('Default thresholds set based on average values', 'success');
                     }
                 });
             });
@@ -410,14 +541,14 @@
                     data: JSON.stringify(thresholds),
                     success: function(response) {
                         if (response.status === 'success') {
-                            alert('Thresholds saved successfully!');
+                            showAlert('Thresholds saved successfully!', 'success');
                             checkForAlarms();
                         } else {
-                            alert('Error: ' + response.message);
+                            showAlert('Error: ' + response.message, 'danger');
                         }
                     },
                     error: function(xhr) {
-                        alert('Error saving thresholds');
+                        showAlert('Error saving thresholds', 'danger');
                     }
                 });
             });
@@ -425,80 +556,107 @@
             // Acknowledge alarm
             $(document).on('click', '.acknowledge-btn', function() {
                 const alarmIndex = $(this).data('id');
-                $.post('/acknowledge-alarm/', {index: alarmIndex}, function(response) {
-                    if (response.status === 'success') {
-                        $(this).closest('tr').remove();
-                        if ($('#alarmsTable tbody tr').length === 0) {
-                            $('#alarmsCard').hide();
+                const rowData = alarmsTable.row(alarmIndex).data();
+                const alarmKey = `${rowData.node_id}_${rowData.sensor}`;
+                
+                $.ajax({
+                    url: '/acknowledge-alarm/',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ index: alarmIndex }),
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Remove from known alarms
+                            knownAlarms.delete(alarmKey);
+                            
+                            // Remove the row from the table
+                            alarmsTable.row(alarmIndex).remove().draw();
+                            
+                            // Update alarm count
+                            updateAlarmCount(alarmsTable.data().length);
+                            
+                            // Hide card if no more alarms
+                            if (alarmsTable.data().length === 0) {
+                                $('#alarmsCard').hide();
+                            }
+                            
+                            showAlert('Alarm acknowledged successfully', 'success');
+                        } else {
+                            showAlert('Error: ' + response.message, 'danger');
                         }
+                    },
+                    error: function(xhr) {
+                        showAlert('Error acknowledging alarm', 'danger');
                     }
                 });
             });
             
-            // Add this to your existing JavaScript in alarm.html
-            // Auto-refresh when alarm is detected
-            let alarmDetected = false;
-
-            function checkForAlarms() {
-                $.get('/check-alarms/', function(response) {
-                    if (response.warning) {
-                        // Show warning message
-                        alert(response.warning);
-                    }
-                    
-                    if (response.active_alarms && response.active_alarms.length > 0) {
-                        $('#alarmsCard').show();
-                        
-                        // Show modal for new alarms
-                        const newAlarms = response.active_alarms.filter(alarm => 
-                            !$(`.alarm-row:contains(${alarm.node_id})`).length
-                        );
-                        
-                        if (newAlarms.length > 0) {
-                            const alarm = newAlarms[0]; // Show first new alarm
-                            $('#alarmModalBody').html(`
-                                <p><strong>Location:</strong> ${alarm.location}</p>
-                                <p><strong>Node ID:</strong> ${alarm.node_id}</p>
-                                <p><strong>Sensor:</strong> ${alarm.sensor}</p>
-                                <p><strong>Value:</strong> ${alarm.value} (Threshold: ${alarm.threshold})</p>
-                                <p><strong>Time:</strong> ${new Date(alarm.timestamp).toLocaleString()}</p>
-                            `);
-                            $('#alarmModal').modal('show');
-                        }
-                    } else {
-                        $('#alarmsCard').hide();
-                    }
-                });
+            // Update alarm count display
+            function updateAlarmCount(count) {
+                $('#activeAlarmCount').text(count);
+                const badge = $('#alarmCountBadge');
+                if (count > 0) {
+                    badge.text(count).removeClass('d-none');
+                } else {
+                    badge.addClass('d-none');
+                }
             }
-
-            // Check for alarms every 10 seconds (more frequent for quicker response)
-            setInterval(checkForAlarms, 10000);
             
             // Check for alarms periodically
             function checkForAlarms() {
                 $.get('/check-alarms/', function(response) {
                     if (response.active_alarms && response.active_alarms.length > 0) {
+                        // Show alarms card if hidden
                         $('#alarmsCard').show();
                         
-                        // Show modal for new alarms
-                        const newAlarms = response.active_alarms.filter(alarm => 
-                            !$(`.alarm-row:contains(${alarm.node_id})`).length
-                        );
+                        // Update alarm count
+                        updateAlarmCount(response.active_alarms.length);
                         
+                        // Process alarms to find new ones
+                        const newAlarms = response.active_alarms.filter(alarm => {
+                            const alarmKey = `${alarm.node_id}_${alarm.sensor}`;
+                            return !knownAlarms.has(alarmKey);
+                        });
+                        
+                        // Add new alarms to known set
+                        newAlarms.forEach(alarm => {
+                            knownAlarms.add(`${alarm.node_id}_${alarm.sensor}`);
+                        });
+                        
+                        // Update table with all active alarms
+                        alarmsTable.clear();
+                        alarmsTable.rows.add(response.active_alarms);
+                        alarmsTable.draw();
+                        
+                        // Show modal for new alarms
                         if (newAlarms.length > 0) {
                             const alarm = newAlarms[0]; // Show first new alarm
                             $('#alarmModalBody').html(`
+                                <div class="alert alert-danger">
+                                    <h5>${alarm.message}</h5>
+                                </div>
                                 <p><strong>Location:</strong> ${alarm.location}</p>
                                 <p><strong>Node ID:</strong> ${alarm.node_id}</p>
                                 <p><strong>Sensor:</strong> ${alarm.sensor}</p>
                                 <p><strong>Value:</strong> ${alarm.value} (Threshold: ${alarm.threshold})</p>
                                 <p><strong>Time:</strong> ${new Date(alarm.timestamp).toLocaleString()}</p>
                             `);
+                            
+                            // Play alarm sound
+                            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3');
+                            audio.play().catch(e => console.log('Audio play failed:', e));
+                            
                             $('#alarmModal').modal('show');
                         }
                     } else {
+                        // No active alarms
+                        alarmsTable.clear().draw();
                         $('#alarmsCard').hide();
+                        updateAlarmCount(0);
+                        knownAlarms.clear();
                     }
+                }).fail(function() {
+                    console.error('Failed to check alarms');
                 });
             }
             
@@ -566,13 +724,6 @@
                 });
             }
             
-            // Initialize page
-            loadThresholds();
-            loadAverageValues();
-            
-            // Check for alarms every 30 seconds
-            setInterval(checkForAlarms, 30000);
-            
             // View all alarms button in modal
             $('#btnViewAlarms').click(function() {
                 $('#alarmModal').modal('hide');
@@ -580,6 +731,15 @@
                     scrollTop: $('#alarmsCard').offset().top
                 }, 500);
             });
+            
+            // Initialize page
+            loadThresholds();
+            loadAverageValues();
+            loadEmail();
+            
+            // Check for alarms immediately and then every 30 seconds
+            checkForAlarms();
+            setInterval(checkForAlarms, 30000);
         });
     </script>
 </body>

@@ -4,6 +4,7 @@
     <title>Sensor Prediction</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
@@ -132,6 +133,114 @@
             display: flex;
             flex-wrap: wrap;
         }
+        
+        .event-badge {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        .related-events {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .timeline-container {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline-line {
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: var(--secondary-color);
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .timeline-dot {
+            position: absolute;
+            left: -30px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            border: 3px solid white;
+        }
+        
+        .timeline-content {
+            padding: 10px 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .timeline-time {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .timeline-event {
+            font-weight: 600;
+        }
+        
+        .timeline-instructor {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .data-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .data-card {
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .data-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .data-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .data-unit {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .data-change {
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        
+        .positive-change {
+            color: #28a745;
+        }
+        
+        .negative-change {
+            color: #dc3545;
+        }
+        
+        .neutral-change {
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -238,23 +347,42 @@
                                     <i class="fas fa-chart-area me-2"></i> Future Prediction Results
                                 </div>
                                 <div class="card-body">
+                                    <div class="data-comparison" id="dataComparison">
+                                        <!-- Data comparison cards will be inserted here -->
+                                    </div>
+                                    
                                     <div class="chart-container">
                                         <canvas id="predictionChart"></canvas>
                                     </div>
                                     
-                                    <div class="table-responsive mt-4">
-                                        <h5><i class="fas fa-table me-2"></i>Prediction Data</h5>
-                                        <table class="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Timestamp</th>
-                                                    <th>Predicted Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="predictionTableBody">
-                                                <!-- Table rows will be inserted here -->
-                                            </tbody>
-                                        </table>
+                                    <div class="row mt-4">
+                                        <div class="col-md-8">
+                                            <div class="table-responsive">
+                                                <h5><i class="fas fa-table me-2"></i>Prediction Data</h5>
+                                                <table class="table table-striped">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Timestamp</th>
+                                                            <th>Predicted Value</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="predictionTableBody">
+                                                        <!-- Table rows will be inserted here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h5><i class="fas fa-calendar-alt me-2"></i>Related Events</h5>
+                                            <div class="related-events">
+                                                <div class="timeline-container">
+                                                    <div class="timeline-line"></div>
+                                                    <div id="relatedEventsTimeline">
+                                                        <!-- Related events will be inserted here -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -306,6 +434,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -315,19 +446,34 @@
                 {
                     type: 'line',
                     data: {
-                        datasets: [{
-                            label: 'Predicted Values',
-                            borderColor: '#6a11cb',
-                            backgroundColor: 'rgba(106, 17, 203, 0.1)',
-                            borderWidth: 3,
-                            pointBackgroundColor: '#fff',
-                            pointBorderColor: '#6a11cb',
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            fill: true,
-                            tension: 0.3,
-                            data: []
-                        }]
+                        datasets: [
+                            {
+                                label: 'Historical Data',
+                                borderColor: '#6c757d',
+                                backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                                borderWidth: 2,
+                                pointBackgroundColor: '#fff',
+                                pointBorderColor: '#6c757d',
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                fill: true,
+                                tension: 0.1,
+                                data: []
+                            },
+                            {
+                                label: 'Predicted Values',
+                                borderColor: '#6a11cb',
+                                backgroundColor: 'rgba(106, 17, 203, 0.1)',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#fff',
+                                pointBorderColor: '#6a11cb',
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                                fill: true,
+                                tension: 0.3,
+                                data: []
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
@@ -409,7 +555,7 @@
                 else if (target === 'light') title = 'Predicted Light Level';
                 else if (target === 'snd') title = 'Predicted Sound Level (dB)';
                 
-                predictionChart.data.datasets[0].label = title;
+                predictionChart.data.datasets[1].label = title;
                 predictionChart.options.scales.y.title.text = title.split(':')[0];
                 predictionChart.update();
             }
@@ -528,10 +674,18 @@
                 };
                 
                 // Add input values
-                if (formData.target !== 'temp') formData.temp = document.getElementById('temp').value;
-                if (formData.target !== 'hum') formData.hum = document.getElementById('hum').value;
-                if (formData.target !== 'light') formData.light = document.getElementById('light').value;
-                if (formData.target !== 'snd') formData.snd = document.getElementById('snd').value;
+                if (formData.target !== 'temp' && document.getElementById('temp')) formData.temp = document.getElementById('temp').value;
+                if (formData.target !== 'hum' && document.getElementById('hum')) formData.hum = document.getElementById('hum').value;
+                if (formData.target !== 'light' && document.getElementById('light')) formData.light = document.getElementById('light').value;
+                if (formData.target !== 'snd' && document.getElementById('snd')) formData.snd = document.getElementById('snd').value;
+                
+                // Validate form data
+                if (!formData.node_id || !formData.loc || !formData.target) {
+                    alert('Please select a node ID, location, and value to predict.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-chart-line me-2"></i> Predict Future Values';
+                    return;
+                }
                 
                 // Make AJAX request
                 fetch('/predict-future-values/', {
@@ -550,12 +704,25 @@
                         const resultsContainer = document.getElementById('resultContainer');
                         resultsContainer.style.display = 'block';
                         
-                        // Update chart
-                        predictionChart.data.datasets[0].data = data.predictions.map(p => ({
+                        // Update chart with predictions
+                        predictionChart.data.datasets[1].data = data.predictions.map(p => ({
                             x: p.timestamp,
                             y: p.value
                         }));
-                        predictionChart.update();
+                        
+                        // Fetch historical data for the past 3 hours
+                        fetchHistoricalData(formData.node_id, formData.loc, formData.target)
+                            .then(historicalData => {
+                                // Update chart with historical data
+                                predictionChart.data.datasets[0].data = historicalData.map(d => ({
+                                    x: d.date_created,
+                                    y: d[formData.target]
+                                }));
+                                predictionChart.update();
+                                
+                                // Update data comparison cards
+                                updateDataComparison(historicalData, data.predictions, formData.target);
+                            });
                         
                         // Update table
                         const tableBody = document.getElementById('predictionTableBody');
@@ -565,6 +732,10 @@
                                 <td>${p.value.toFixed(2)}</td>
                             </tr>
                         `).join('');
+                        
+                        // Fetch related events
+                        fetchRelatedEvents(formData.loc, data.predictions[0].timestamp, 
+                                          data.predictions[data.predictions.length - 1].timestamp);
                     } else {
                         alert(data.message);
                     }
@@ -578,6 +749,125 @@
                     submitBtn.innerHTML = '<i class="fas fa-chart-line me-2"></i> Predict Future Values';
                 });
             });
+            
+            // Fetch historical data for the past 3 hours
+            function fetchHistoricalData(node_id, loc, target) {
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setHours(endDate.getHours() - 3); // Past 3 hours
+                
+                return fetch(`/sensor/data/?node_id=${node_id}&loc=${loc}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
+                    .then(response => response.json())
+                    .then(data => data)
+                    .catch(error => {
+                        console.error('Error fetching historical data:', error);
+                        return [];
+                    });
+            }
+            
+            // Update data comparison cards
+            function updateDataComparison(historicalData, predictions, target) {
+                const comparisonContainer = document.getElementById('dataComparison');
+                
+                // Calculate averages
+                const historicalAvg = historicalData.length > 0 ? 
+                    historicalData.reduce((sum, d) => sum + Number(d[target]), 0) / historicalData.length : 0;
+                
+                const predictionAvg = predictions.length > 0 ? 
+                    predictions.reduce((sum, p) => sum + Number(p.value), 0) / predictions.length : 0;
+                
+                // Calculate change percentage
+                const change = historicalAvg !== 0 ? 
+                    ((predictionAvg - historicalAvg) / historicalAvg) * 100 : 0;
+                
+                // Get unit based on target
+                let unit = '';
+                if (target === 'temp') unit = '°C';
+                else if (target === 'hum') unit = '%';
+                else if (target === 'snd') unit = 'dB';
+                
+                // Create comparison cards
+                comparisonContainer.innerHTML = `
+                    <div class="data-card">
+                        <div class="data-label">Current Average</div>
+                        <div class="data-value">${historicalAvg.toFixed(2)} <span class="data-unit">${unit}</span></div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-label">Predicted Average</div>
+                        <div class="data-value">${predictionAvg.toFixed(2)} <span class="data-unit">${unit}</span></div>
+                        <div class="data-change ${change > 0 ? 'positive-change' : change < 0 ? 'negative-change' : 'neutral-change'}">
+                            ${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${Math.abs(change).toFixed(2)}%
+                        </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-label">Current Min</div>
+                        <div class="data-value">${historicalData.length > 0 ? Math.min(...historicalData.map(d => Number(d[target]))).toFixed(2) : '--'} <span class="data-unit">${unit}</span></div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-label">Current Max</div>
+                        <div class="data-value">${historicalData.length > 0 ? Math.max(...historicalData.map(d => Number(d[target]))).toFixed(2) : '--'} <span class="data-unit">${unit}</span></div>
+                    </div>
+                `;
+            }
+            
+            // Fetch related events for the prediction time range
+            function fetchRelatedEvents(loc, startTime, endTime) {
+                // Validate parameters
+                if (!loc || !startTime || !endTime) {
+                    console.error('Invalid parameters for fetchRelatedEvents:', { loc, startTime, endTime });
+                    document.getElementById('relatedEventsTimeline').innerHTML = 
+                        '<div class="alert alert-danger">Please select a location and make a prediction first</div>';
+                    return;
+                }
+                
+                // Format dates to ensure compatibility (YYYY-MM-DDTHH:MM)
+                const formatDate = (date) => {
+                    const d = new Date(date);
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                };
+                
+                const url = `/event/data/?venue=${encodeURIComponent(loc)}&startDate=${formatDate(startTime)}&endDate=${formatDate(endTime)}`;
+                console.log('Fetching events:', url); // Log the request URL
+                
+                fetch(url)
+                    .then(response => {
+                        console.log('Response status:', response.status); // Log response status
+                        return response.json();
+                    })
+                    .then(events => {
+                        console.log('Events received:', events); // Log received events
+                        const timeline = document.getElementById('relatedEventsTimeline');
+                        
+                        if (events.error) {
+                            timeline.innerHTML = `<div class="alert alert-danger">${events.error}</div>`;
+                            return;
+                        }
+                        
+                        if (events.length === 0) {
+                            timeline.innerHTML = '<div class="alert alert-info">No events scheduled during this period</div>';
+                            return;
+                        }
+                        
+                        timeline.innerHTML = events.map(event => `
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">
+                                        ${new Date(event.dateWtime_start).toLocaleTimeString()} - 
+                                        ${new Date(event.dateWtime_end).toLocaleTimeString()}
+                                    </div>
+                                    <div class="timeline-event">${event.event_occured}</div>
+                                    <div class="timeline-instructor">${event.instructor}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    })
+                    .catch(error => {
+                        console.error('Error fetching related events:', error);
+                        document.getElementById('relatedEventsTimeline').innerHTML = 
+                            '<div class="alert alert-danger">Error loading related events</div>';
+                    });
+            }
             
             // Helper function to get CSRF token
             function getCookie(name) {

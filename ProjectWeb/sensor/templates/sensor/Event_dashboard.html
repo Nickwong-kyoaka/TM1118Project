@@ -408,7 +408,20 @@
             let currentSensorData = [];
 
             const eventTable = $('#eventTable').DataTable({
-                ajax: { url: '/event/data/', dataSrc: '' },
+                ajax: {
+                    url: '/event/data/',
+                    dataSrc: function(json) {
+                        if (json.message) {
+                            alert(json.message);
+                            return [];
+                        }
+                        return json;
+                    },
+                    error: function(xhr, error, thrown) {
+                        console.error("Error fetching event data:", xhr.responseText);
+                        alert("Failed to load events. Please try again or check the console for details.");
+                    }
+                },
                 columns: [
                     { 
                         data: 'venue',
@@ -501,42 +514,71 @@
                                 mode: 'index',
                                 intersect: false,
                                 callbacks: {
-                                    label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}`
+                                    label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) || 'N/A'}`
                                 }
                             }
                         },
                         scales: {
                             x: {
                                 type: 'time',
-                                time: { unit: 'minute', tooltipFormat: 'MMM D, h:mm A' },
+                                time: { 
+                                    unit: 'minute', 
+                                    tooltipFormat: 'MMM D, h:mm A',
+                                    displayFormats: {
+                                        minute: 'h:mm a'
+                                    }
+                                },
                                 grid: { display: false }
                             },
-                            y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } }
+                            y: { 
+                                beginAtZero: false, 
+                                grid: { color: 'rgba(0,0,0,0.05)' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return Number(value).toFixed(1);
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
                         }
                     }
                 });
             }
 
             function updateEventDetails(eventData) {
-                $('#detailVenue').text(eventData.venue);
-                $('#detailEventType').text(eventData.event_occured);
-                $('#detailInstructor').text(eventData.instructor);
-                $('#detailStartTime').text(new Date(eventData.dateWtime_start).toLocaleString());
-                $('#detailEndTime').text(new Date(eventData.dateWtime_end).toLocaleString());
+                $('#detailVenue').text(eventData.venue || '-');
+                $('#detailEventType').text(eventData.event_occured || '-');
+                $('#detailInstructor').text(eventData.instructor || '-');
+                $('#detailStartTime').text(eventData.dateWtime_start ? new Date(eventData.dateWtime_start).toLocaleString() : '-');
+                $('#detailEndTime').text(eventData.dateWtime_end ? new Date(eventData.dateWtime_end).toLocaleString() : '-');
                 $('#detailDuration').text(
-                    ((new Date(eventData.dateWtime_end) - new Date(eventData.dateWtime_start)) / (1000 * 60 * 60)).toFixed(1) + ' hours'
+                    eventData.dateWtime_start && eventData.dateWtime_end ?
+                    ((new Date(eventData.dateWtime_end) - new Date(eventData.dateWtime_start)) / (1000 * 60 * 60)).toFixed(1) + ' hours' : '-'
                 );
             }
 
             function fetchEventSensorData(eventId) {
-                $.get(`/event_sensor_data/?event_id=${eventId}`, function(data) {
-                    currentSensorData = data;
-                    updateChartsWithEventData(data);
-                    updateStatistics(data);
-                }).fail(error => console.error("Error fetching sensor data:", error));
+                $.get(`/event/sensor/data/?event_id=${eventId}`, function(response) {
+                    console.log("Sensor data response:", response);
+                    currentSensorData = response.data || [];
+                    if (response.message) {
+                        console.log(response.message);
+                    }
+                    updateChartsWithEventData(currentSensorData);
+                    updateStatistics(currentSensorData);
+                }).fail(error => {
+                    console.error("Error fetching sensor data:", error);
+                    alert("Failed to load sensor data. Please try again or check the console for details.");
+                    updateChartsWithEventData([]);
+                    updateStatistics([]);
+                });
             }
 
             function updateChartsWithEventData(data) {
+                console.log("Updating charts with data:", data);
                 const sensors = [
                     { chart: charts.temp, field: 'temp', label: 'Temperature (°C)' },
                     { chart: charts.hum, field: 'hum', label: 'Humidity (%)' },
@@ -545,7 +587,14 @@
                 ];
 
                 sensors.forEach(({ chart, field, label }) => {
-                    chart.data.datasets = data.length ? [{
+                    const filteredData = data
+                        .filter(item => item[field] !== null && item[field] !== undefined)
+                        .map(item => ({
+                            x: new Date(item.date_created),
+                            y: parseFloat(item[field])
+                        }));
+
+                    chart.data.datasets = [{
                         label,
                         borderColor: chart.canvas.id === 'tempChart' ? '#FF6384' :
                                     chart.canvas.id === 'humChart' ? '#36A2EB' :
@@ -555,13 +604,14 @@
                         pointRadius: 3,
                         fill: true,
                         tension: 0.3,
-                        data: data.map(item => ({ x: item.date_created, y: Number(item[field]) }))
-                    }] : [];
+                        data: filteredData
+                    }];
                     chart.update();
                 });
             }
 
             function updateStatistics(data) {
+                console.log("Updating statistics with data:", data);
                 const sensors = [
                     { key: 'temp', unit: '°C', label: 'Temperature' },
                     { key: 'hum', unit: '%', label: 'Humidity' },
@@ -570,11 +620,15 @@
                 ];
 
                 sensors.forEach(({ key, unit }) => {
-                    const values = data.map(item => Number(item[key])).filter(val => !isNaN(val));
-                    if (values.length) {
+                    const values = data
+                        .map(item => parseFloat(item[key]))
+                        .filter(val => !isNaN(val) && val !== null);
+
+                    if (values.length > 0) {
                         const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
                         const min = Math.min(...values);
                         const max = Math.max(...values);
+                        
                         $(`#avg${key.charAt(0).toUpperCase() + key.slice(1)}`).text(`${avg.toFixed(1)} ${unit}`);
                         $(`#${key}Avg`).text(avg.toFixed(1));
                         $(`#${key}Min`).text(min.toFixed(1));
